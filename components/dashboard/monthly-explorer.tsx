@@ -20,6 +20,7 @@ export function MonthlyExplorer({ monthlyStats, categoryStats }: MonthlyExplorer
   const [selectedMonth, setSelectedMonth] = useState<string | null>(
     monthlyStats.length > 0 ? monthlyStats[0].month_label : null,
   )
+  const categoryTooltipWrapperStyle = { zIndex: 99999, pointerEvents: "none" as const }
 
   if (!monthlyStats || monthlyStats.length === 0) {
     return (
@@ -129,13 +130,18 @@ export function MonthlyExplorer({ monthlyStats, categoryStats }: MonthlyExplorer
                         tickFormatter={(value) => `${(value / 1000).toFixed(0)}k`}
                       />
                       <Tooltip
+                        wrapperStyle={categoryTooltipWrapperStyle}
                         content={({ active, payload }) => {
                           if (active && payload && payload.length) {
                             return (
-                              <div className="rounded-lg border bg-background p-3 shadow-md">
-                                <p className="text-sm font-medium mb-1">{payload[0].payload.category}</p>
-                                <p className="text-sm">{formatCurrency(payload[0].value as number)}</p>
-                                <p className="text-xs text-muted-foreground">
+                              <div className="rounded-lg border bg-white dark:bg-slate-900 p-3 shadow-lg backdrop-blur-sm bg-opacity-100 dark:bg-opacity-100">
+                                <p className="text-sm font-medium mb-1 text-slate-900 dark:text-slate-100">
+                                  {payload[0].payload.category}
+                                </p>
+                                <p className="text-sm text-slate-700 dark:text-slate-300">
+                                  {formatCurrency(payload[0].value as number)}
+                                </p>
+                                <p className="text-xs text-slate-500 dark:text-slate-400">
                                   {payload[0].payload.transaction_count} transactions
                                 </p>
                               </div>

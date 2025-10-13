@@ -105,10 +105,16 @@ export function TransactionsTable({ initialTransactions }: TransactionsTableProp
     return sum + t.amount
   }, 0)
 
-  // Calculate TOTAL income from ALL transactions (not just filtered category)
+  // Calculate MONTHLY income from INGTES category only (salary/income)
+  // Not affected by category filter - always shows monthly salary
   const totalIncome = transactions.reduce((sum, t) => {
-    if (t.user_excluded || t.amount < 0) return sum
-    return sum + t.amount
+    if (t.user_excluded) return sum
+    // Only count INGTES category as income (case-insensitive, includes partial matches)
+    const category = t.category?.toLowerCase() || ''
+    if (category.includes('ingtes') || category === 'income' || category === 'salary') {
+      return sum + Math.abs(t.amount)
+    }
+    return sum
   }, 0)
 
   // Calculate what percentage of total income this filtered category represents (only for expenses)
@@ -134,17 +140,15 @@ export function TransactionsTable({ initialTransactions }: TransactionsTableProp
                   {formatCurrency(filteredTotal)}
                 </span>
               </div>
-              {totalIncome > 0 && (
-                <div>
-                  Income: <span className="font-semibold text-emerald-600 dark:text-emerald-400">
-                    {formatCurrency(totalIncome)}
-                  </span>
-                </div>
-              )}
+              <div>
+                Salary: <span className="font-semibold text-emerald-600 dark:text-emerald-400">
+                  {formatCurrency(totalIncome)}
+                </span>
+              </div>
               {categoryPercentageOfIncome > 0 && (
                 <div>
                   <span className="text-muted-foreground">
-                    ({categoryPercentageOfIncome.toFixed(1)}% of income)
+                    ({categoryPercentageOfIncome.toFixed(1)}% of salary)
                   </span>
                 </div>
               )}

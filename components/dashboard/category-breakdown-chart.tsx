@@ -196,7 +196,7 @@ export function CategoryBreakdownChart({ data }: CategoryBreakdownChartProps) {
   }))
 
   const isMobile = typeof window !== "undefined" && window.innerWidth < 640
-  const pieChartHeight = isMobile ? 260 : 340
+  const pieChartHeight = isMobile ? 380 : 340
 
   const renderGraphicElement = (graphic: CategoryGraphic | null, sliceColor: string, sizeClass = "h-4 w-4") => {
     if (graphic?.kind === "lucide") {
@@ -217,31 +217,93 @@ export function CategoryBreakdownChart({ data }: CategoryBreakdownChartProps) {
     )
   }
 
-  // Custom label rendering with better spacing
-  const renderCustomLabel = (props: any) => {
+  // Pre-calculate and distribute labels with collision detection
+  const calculateDistributedPositions = () => {
     const RADIAN = Math.PI / 180
-    const { cx, cy, midAngle, outerRadius, name, percent } = props
-    const sin = Math.sin(-RADIAN * midAngle)
-    const cos = Math.cos(-RADIAN * midAngle)
+    const positions: any[] = []
+    let startAngle = 0
 
-    const connectorOffset = outerRadius + (isMobile ? 6 : 12)
-    const horizontalExtension = isMobile ? 18 : 26
+    pieChartData.forEach((entry, index) => {
+      const total = pieChartData.reduce((sum, e) => sum + e.value, 0)
+      const sliceAngle = (entry.value / total) * 360
+      const midAngle = startAngle + sliceAngle / 2
 
-    const sx = cx + outerRadius * cos
-    const sy = cy + outerRadius * sin
-    const mx = cx + connectorOffset * cos
-    const my = cy + connectorOffset * sin
-    const ex = mx + (cos >= 0 ? 1 : -1) * horizontalExtension
-    const ey = my
+      const sin = Math.sin(-RADIAN * midAngle)
+      const cos = Math.cos(-RADIAN * midAngle)
+      const isRight = cos >= 0
+
+      positions.push({
+        index,
+        midAngle,
+        sin,
+        cos,
+        isRight,
+        originalY: sin,
+        adjustedY: sin,
+        name: entry.name,
+        percent: (entry.value / total) * 100
+      })
+
+      startAngle += sliceAngle
+    })
+
+    // Separate left and right, sort by Y position
+    const leftLabels = positions.filter(p => !p.isRight).sort((a, b) => a.originalY - b.originalY)
+    const rightLabels = positions.filter(p => p.isRight).sort((a, b) => a.originalY - b.originalY)
+
+    // Collision detection and adjustment
+    const minSpacing = isMobile ? 0.16 : 0.18
+
+    const adjustSide = (labels: any[]) => {
+      for (let i = 1; i < labels.length; i++) {
+        const prev = labels[i - 1]
+        const curr = labels[i]
+        const minY = prev.adjustedY + minSpacing
+
+        if (curr.adjustedY < minY) {
+          curr.adjustedY = minY
+        }
+      }
+    }
+
+    adjustSide(leftLabels)
+    adjustSide(rightLabels)
+
+    return [...leftLabels, ...rightLabels]
+  }
+
+  const distributedPositions = calculateDistributedPositions()
+
+  // Custom label rendering with distributed positions
+  const renderCustomLabel = (props: any) => {
+    const { cx, cy, outerRadius, name, percent, index } = props
+
+    // Find the distributed position for this label
+    const position = distributedPositions.find(p => p.index === index)
+    if (!position) return null
+
+    const { cos, adjustedY, isRight, midAngle } = position
+    const sin = adjustedY
+
+    const labelDistance = isMobile ? outerRadius + 28 : outerRadius + 12
+
+    // Original slice edge point
+    const sx = cx + outerRadius * position.cos
+    const sy = cy + outerRadius * position.sin
+
+    // Adjusted label position (distributed to avoid overlap)
+    const ex = cx + labelDistance * cos
+    const ey = cy + labelDistance * sin
+
     const percentageValue = percent * 100
     const percentageLabel = `${percentageValue.toFixed(0)}%`
-    const isRightSide = cos >= 0
+    const isRightSide = isRight
     const sliceColor = props.payload?.color || props.fill || "#94a3b8"
     const iconName = props.payload?.icon ?? props.payload?.category_icon ?? null
     const graphic = resolveCategoryGraphic(iconName, name)
     const showText = !isMobile
 
-    const minInsidePercent = isMobile ? 18 : 10
+    const minInsidePercent = isMobile ? 12 : 10
     const showInsideBadge = percentageValue >= minInsidePercent
     const showOutsideLabel = !isMobile || !showInsideBadge
 
@@ -250,7 +312,7 @@ export function CategoryBreakdownChart({ data }: CategoryBreakdownChartProps) {
     const badgeSize = isMobile ? 48 : 60
     const badgeRadiusFactor = isMobile ? 0.58 : 0.6
     const angleForLabel = ((midAngle % 360) + 360) % 360
-    const bandMargin = isMobile ? 70 : 50
+    const bandMargin = isMobile ? 40 : 50
     const isWithinBand = angleForLabel >= bandMargin && angleForLabel <= 360 - bandMargin
 
     const insideBadge = showInsideBadge && isWithinBand ? (
@@ -267,13 +329,16 @@ export function CategoryBreakdownChart({ data }: CategoryBreakdownChartProps) {
           )}
         >
           <div
-            className="flex items-center justify-center rounded-full shadow-sm"
+            className="flex items-center justify-center rounded-full shadow-sm flex-shrink-0"
             style={{
               boxShadow: "0 8px 20px -12px rgba(15, 23, 42, 0.35)",
               backgroundColor: "hsl(var(--background))",
               border: `2px solid ${sliceColor}`,
               height: isMobile ? "1.75rem" : "2.2rem",
               width: isMobile ? "1.75rem" : "2.2rem",
+              minWidth: isMobile ? "1.75rem" : "2.2rem",
+              minHeight: isMobile ? "1.75rem" : "2.2rem",
+              aspectRatio: "1 / 1",
             }}
           >
             {renderGraphicElement(graphic, sliceColor, isMobile ? "h-4 w-4" : "h-5 w-5")}
@@ -289,31 +354,41 @@ export function CategoryBreakdownChart({ data }: CategoryBreakdownChartProps) {
     }
 
     if (!showText) {
-      const badgeRadius = outerRadius + 28
-      const mobileBadgeSize = 48
-      const badgeX = cx + badgeRadius * cos - mobileBadgeSize / 2
-      const badgeY = cy + badgeRadius * sin - mobileBadgeSize / 2
-      const badgeCenterX = badgeX + mobileBadgeSize / 2
-      const badgeCenterY = badgeY + mobileBadgeSize / 2
+      // Special handling for Rent - use vertical layout
+      const isRent = name?.toLowerCase() === "rent"
+      const mobileBadgeWidth = isRent ? 50 : 65
+      const mobileBadgeHeight = isRent ? 50 : 36
+      const flexDirection = isRent ? "flex-col" : "flex-row"
+      const padding = isRent ? "p-1" : "px-1.5 py-1"
+      const gap = isRent ? "gap-1" : "gap-1.5"
+
+      // Use the distributed ex, ey positions for proper spacing
+      const badgeX = ex - mobileBadgeWidth / 2
+      const badgeY = ey - mobileBadgeHeight / 2
 
       return (
         <g>
-          <path d={`M${sx},${sy} L${badgeCenterX},${badgeCenterY}`} stroke="hsl(var(--foreground))" strokeWidth={1.5} fill="none" />
-          <foreignObject x={badgeX} y={badgeY} width={mobileBadgeSize} height={mobileBadgeSize}>
-            <div className="flex h-full flex-col items-center justify-center gap-1 text-[10px] font-semibold text-foreground">
+          <path d={`M${sx},${sy} L${ex},${ey}`} stroke="hsl(var(--foreground))" strokeWidth={1.5} fill="none" />
+          <foreignObject x={badgeX} y={badgeY} width={mobileBadgeWidth} height={mobileBadgeHeight}>
+            <div
+              className={`flex h-full ${flexDirection} items-center justify-center ${gap} text-[10px] font-semibold text-foreground rounded-lg ${padding} bg-card/100`}
+            >
               <div
-                className="flex items-center justify-center rounded-full shadow-sm"
+                className="flex items-center justify-center rounded-full shadow-sm flex-shrink-0"
                 style={{
                   boxShadow: "0 8px 20px -12px rgba(15, 23, 42, 0.35)",
                   backgroundColor: "hsl(var(--background))",
                   border: `2px solid ${sliceColor}`,
                   height: "1.75rem",
                   width: "1.75rem",
+                  minWidth: "1.75rem",
+                  minHeight: "1.75rem",
+                  aspectRatio: "1 / 1",
                 }}
               >
                 {renderGraphicElement(graphic, sliceColor, "h-4 w-4")}
               </div>
-              <span>{percentageLabel}</span>
+              <span className="text-xs">{percentageLabel}</span>
               <span className="sr-only">{labelText}</span>
             </div>
           </foreignObject>
@@ -324,9 +399,9 @@ export function CategoryBreakdownChart({ data }: CategoryBreakdownChartProps) {
 
     const labelWidth = 200
     const labelHeight = 34
-    const horizontalGap = 12
-    const labelX = isRightSide ? ex + horizontalGap : ex - (labelWidth + horizontalGap)
-    const labelY = ey - labelHeight / 2
+    const horizontalGap = isMobile ? 0 : 12
+    const labelX = isMobile ? ex - 25 : (isRightSide ? ex + horizontalGap : ex - (labelWidth + horizontalGap))
+    const labelY = isMobile ? ey - 25 : ey - labelHeight / 2
 
     const textNode = showText ? (
       <span className="max-w-[150px] truncate">{labelText}</span>
@@ -337,7 +412,7 @@ export function CategoryBreakdownChart({ data }: CategoryBreakdownChartProps) {
     return (
       <g>
         <path
-          d={`M${sx},${sy} L${mx},${my} L${ex},${ey}`}
+          d={`M${sx},${sy} L${ex},${ey}`}
           stroke="hsl(var(--foreground))"
           strokeWidth={1.5}
           fill="none"
@@ -345,7 +420,7 @@ export function CategoryBreakdownChart({ data }: CategoryBreakdownChartProps) {
         <foreignObject x={labelX} y={labelY} width={labelWidth} height={labelHeight}>
           <div
             className={cn(
-              "flex h-full items-center gap-2 text-xs font-medium text-foreground",
+              "flex h-full items-center gap-2 text-xs font-medium text-foreground rounded-lg px-2 py-1 bg-card/100",
               isRightSide ? "justify-start" : "justify-end"
             )}
           >
@@ -357,6 +432,9 @@ export function CategoryBreakdownChart({ data }: CategoryBreakdownChartProps) {
                     boxShadow: "0 8px 20px -12px rgba(15, 23, 42, 0.35)",
                     backgroundColor: "hsl(var(--background))",
                     border: `2px solid ${sliceColor}`,
+                    minWidth: "1.5rem",
+                    minHeight: "1.5rem",
+                    aspectRatio: "1 / 1",
                   }}
                 >
                   {renderGraphicElement(graphic, sliceColor, "h-3.5 w-3.5")}
@@ -372,6 +450,9 @@ export function CategoryBreakdownChart({ data }: CategoryBreakdownChartProps) {
                     boxShadow: "0 8px 20px -12px rgba(15, 23, 42, 0.35)",
                     backgroundColor: "hsl(var(--background))",
                     border: `2px solid ${sliceColor}`,
+                    minWidth: "1.5rem",
+                    minHeight: "1.5rem",
+                    aspectRatio: "1 / 1",
                   }}
                 >
                   {renderGraphicElement(graphic, sliceColor, "h-3.5 w-3.5")}
@@ -386,9 +467,16 @@ export function CategoryBreakdownChart({ data }: CategoryBreakdownChartProps) {
     )
   }
 
-  const tooltipWrapperStyle = { zIndex: 1000 }
+  const tooltipWrapperStyle = { zIndex: 99999, pointerEvents: "none" as const }
   const tooltipContainerClass =
-    "rounded-xl border border-black/10 dark:border-white/15 bg-white dark:bg-slate-900 p-4 shadow-lg backdrop-blur-sm bg-opacity-100 dark:bg-opacity-100"
+    "rounded-lg border shadow-lg backdrop-blur-sm text-card-foreground bg-opacity-100 dark:bg-opacity-100"
+  const tooltipContainerStyle = {
+    backgroundColor: "hsl(var(--card))",
+    border: "1px solid hsl(var(--border))",
+    borderRadius: "0.75rem",
+    boxShadow: "0 18px 45px -20px rgba(15, 23, 42, 0.45)",
+    padding: "0.75rem",
+  } as const
 
   return (
     <Card>
@@ -411,17 +499,17 @@ export function CategoryBreakdownChart({ data }: CategoryBreakdownChartProps) {
                   <PieChart
                     margin={
                       isMobile
-                        ? { top: 10, right: 20, bottom: 10, left: 20 }
+                        ? { top: 20, right: 45, bottom: 20, left: 45 }
                         : { top: 16, right: 36, bottom: 16, left: 36 }
                     }
                   >
                     <Pie
                       data={pieChartData}
-                      cx={isMobile ? "50%" : "46%"}
+                      cx={isMobile ? "40%" : "46%"}
                       cy="50%"
                       labelLine={false}
                       label={renderCustomLabel}
-                      outerRadius={Math.max(70, Math.min(pieChartHeight / 2 - 18, isMobile ? 110 : 140))}
+                      outerRadius={Math.max(70, Math.min(pieChartHeight / 2 - 18, isMobile ? 120 : 140))}
                       fill="#8884d8"
                       dataKey="value"
                       minAngle={3}
@@ -440,13 +528,16 @@ export function CategoryBreakdownChart({ data }: CategoryBreakdownChartProps) {
                           const iconName = piePayload.icon ?? piePayload.category_icon ?? null
                           const graphic = resolveCategoryGraphic(iconName, name)
                           return (
-                            <div className={`${tooltipContainerClass} space-y-2`}>
+                            <div className={`${tooltipContainerClass} space-y-2`} style={tooltipContainerStyle}>
                               <div className="flex items-center gap-2 text-sm font-semibold text-slate-900 dark:text-slate-100">
                                 <span
                                   className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full shadow-sm"
                                   style={{
                                     boxShadow: "0 12px 24px -18px rgba(15, 23, 42, 0.45)",
                                     backgroundColor: "hsl(var(--background))",
+                                    minWidth: "1.75rem",
+                                    minHeight: "1.75rem",
+                                    aspectRatio: "1 / 1",
                                     border: `2px solid ${sliceColor}`,
                                   }}
                                 >
@@ -495,13 +586,16 @@ export function CategoryBreakdownChart({ data }: CategoryBreakdownChartProps) {
                             payload[0].payload
                           const graphic = resolveCategoryGraphic(category_icon, category)
                           return (
-                            <div className={`${tooltipContainerClass} space-y-2`}>
+                            <div className={`${tooltipContainerClass} space-y-2`} style={tooltipContainerStyle}>
                               <div className="flex items-center gap-2 text-sm font-semibold text-slate-900 dark:text-slate-100">
                                 <span
                                   className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full shadow-sm"
                                   style={{
                                     boxShadow: "0 12px 24px -18px rgba(15, 23, 42, 0.45)",
                                     backgroundColor: "hsl(var(--background))",
+                                    minWidth: "1.75rem",
+                                    minHeight: "1.75rem",
+                                    aspectRatio: "1 / 1",
                                     border: `2px solid ${category_color || "#94a3b8"}`,
                                   }}
                                 >
@@ -554,7 +648,7 @@ export function CategoryBreakdownChart({ data }: CategoryBreakdownChartProps) {
                           payload[0].payload
                         const graphic = resolveCategoryGraphic(category_icon, category)
                         return (
-                          <div className={`${tooltipContainerClass} space-y-2`}>
+                          <div className={`${tooltipContainerClass} space-y-2`} style={tooltipContainerStyle}>
                             <div className="flex items-center gap-2 text-sm font-semibold text-slate-900 dark:text-slate-100">
                               <span
                                 className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full shadow-sm"
