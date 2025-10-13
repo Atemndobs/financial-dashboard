@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Switch } from "@/components/ui/switch"
 import { Label } from "@/components/ui/label"
+import { ArrowLeftRight, PiggyBank } from "lucide-react"
 import type { FilterState } from "@/lib/types"
 
 interface FilterBarProps {
@@ -15,95 +16,93 @@ interface FilterBarProps {
 
 export function FilterBar({ filters, onFiltersChange, availableYears, availableAccounts }: FilterBarProps) {
   return (
-    <div className="flex flex-col gap-4 p-6 bg-card rounded-lg border">
-      <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center justify-between">
-        <div className="flex flex-col sm:flex-row gap-4 flex-1">
-          {/* Year Filter */}
-          <div className="flex flex-col gap-2 min-w-[140px]">
-            <Label className="text-xs text-muted-foreground">Year</Label>
-            <Select
-              value={filters.year?.toString() || "all"}
-              onValueChange={(value) =>
-                onFiltersChange({
-                  ...filters,
-                  year: value === "all" ? null : Number.parseInt(value),
-                })
-              }
-            >
-              <SelectTrigger>
-                <SelectValue placeholder="All years" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All years</SelectItem>
-                {availableYears.map((year) => (
-                  <SelectItem key={year} value={year.toString()}>
-                    {year}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-
-          {/* Account Filter */}
-          <div className="flex flex-col gap-2 min-w-[180px]">
-            <Label className="text-xs text-muted-foreground">Account</Label>
-            <Select
-              value={filters.account || "all"}
-              onValueChange={(value) =>
-                onFiltersChange({
-                  ...filters,
-                  account: value === "all" ? null : value,
-                })
-              }
-            >
-              <SelectTrigger>
-                <SelectValue placeholder="All accounts" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All accounts</SelectItem>
-                {availableAccounts.map((account) => (
-                  <SelectItem key={account} value={account}>
-                    {account}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
+    <div className="flex flex-col gap-3 p-3 sm:p-4 bg-card rounded-lg border">
+      <div className="flex flex-wrap items-center gap-2">
+        {/* Year Filter */}
+        <div className="flex flex-col gap-1 min-w-[100px]">
+          <Label className="text-[10px] sm:text-xs text-muted-foreground sm:hidden">Year</Label>
+          <Select
+            value={filters.year?.toString() || "all"}
+            onValueChange={(value) =>
+              onFiltersChange({
+                ...filters,
+                year: value === "all" ? null : Number.parseInt(value),
+              })
+            }
+          >
+            <SelectTrigger className="h-9">
+              <SelectValue placeholder="Year" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All years</SelectItem>
+              {availableYears.map((year) => (
+                <SelectItem key={year} value={year.toString()}>
+                  {year}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
         </div>
 
-        {/* Toggle Filters */}
-        <div className="flex flex-col sm:flex-row gap-4">
-          <div className="flex items-center gap-2">
-            <Switch
-              id="include-transfers"
-              checked={filters.includeTransfers}
-              onCheckedChange={(checked) =>
-                onFiltersChange({
-                  ...filters,
-                  includeTransfers: checked,
-                })
-              }
-            />
-            <Label htmlFor="include-transfers" className="text-sm cursor-pointer">
-              Include Transfers
-            </Label>
-          </div>
+        {/* Account Filter */}
+        <div className="flex flex-col gap-1 min-w-[120px] flex-1 sm:flex-none">
+          <Label className="text-[10px] sm:text-xs text-muted-foreground sm:hidden">Account</Label>
+          <Select
+            value={filters.account || "all"}
+            onValueChange={(value) =>
+              onFiltersChange({
+                ...filters,
+                account: value === "all" ? null : value,
+              })
+            }
+          >
+            <SelectTrigger className="h-9">
+              <SelectValue placeholder="Account" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All accounts</SelectItem>
+              {availableAccounts.map((account) => (
+                <SelectItem key={account} value={account}>
+                  {account}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
 
-          <div className="flex items-center gap-2">
-            <Switch
-              id="include-savings"
-              checked={filters.includeSavings}
-              onCheckedChange={(checked) =>
-                onFiltersChange({
-                  ...filters,
-                  includeSavings: checked,
-                })
-              }
-            />
-            <Label htmlFor="include-savings" className="text-sm cursor-pointer">
-              Include Savings
-            </Label>
-          </div>
+        {/* Toggle Filters - Icon only on mobile */}
+        <div className="flex items-center gap-2 ml-auto">
+          <Button
+            variant={filters.includeTransfers ? "default" : "outline"}
+            size="sm"
+            onClick={() =>
+              onFiltersChange({
+                ...filters,
+                includeTransfers: !filters.includeTransfers,
+              })
+            }
+            className="h-9 px-2 sm:px-3"
+            title="Include Transfers"
+          >
+            <ArrowLeftRight className="h-4 w-4" />
+            <span className="hidden sm:inline ml-1">Transfers</span>
+          </Button>
+
+          <Button
+            variant={filters.includeSavings ? "default" : "outline"}
+            size="sm"
+            onClick={() =>
+              onFiltersChange({
+                ...filters,
+                includeSavings: !filters.includeSavings,
+              })
+            }
+            className="h-9 px-2 sm:px-3"
+            title="Include Savings"
+          >
+            <PiggyBank className="h-4 w-4" />
+            <span className="hidden sm:inline ml-1">Savings</span>
+          </Button>
         </div>
       </div>
 

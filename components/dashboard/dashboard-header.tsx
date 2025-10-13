@@ -5,6 +5,7 @@ import { formatDate } from "@/lib/utils/format"
 import { Button } from "@/components/ui/button"
 import { RefreshCw, AlertCircle } from "lucide-react"
 import { Alert, AlertDescription } from "@/components/ui/alert"
+import { CurrencySelector } from "@/components/dashboard/currency-selector"
 
 export function DashboardHeader() {
   const currentDate = new Date()
@@ -57,19 +58,21 @@ export function DashboardHeader() {
 
   return (
     <div className="flex flex-col gap-4">
-      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-        <div className="flex flex-col gap-2">
-          <h1 className="text-4xl font-bold tracking-tight">Financial Dashboard</h1>
-          <p className="text-muted-foreground">Track your expenses, income, and savings with detailed insights</p>
-          <p className="text-sm text-muted-foreground">Last updated: {formatDate(currentDate.toISOString())}</p>
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+        <div>
+          <h1 className="text-2xl sm:text-4xl font-bold tracking-tight">Ex-Track</h1>
+          <p className="text-sm text-muted-foreground hidden sm:block">Track your expenses, income, and savings with detailed insights</p>
         </div>
 
-        {isDevelopment && (
-          <Button onClick={handleSync} disabled={isSyncing} variant="outline" className="gap-2">
-            <RefreshCw className={`h-4 w-4 ${isSyncing ? "animate-spin" : ""}`} />
-            {isSyncing ? "Syncing..." : "Sync to Supabase"}
-          </Button>
-        )}
+        <div className="flex items-center gap-2 w-full sm:w-auto justify-between sm:justify-end">
+          <CurrencySelector />
+          {isDevelopment && (
+            <Button onClick={handleSync} disabled={isSyncing} variant="outline" size="sm" className="gap-2">
+              <RefreshCw className={`h-4 w-4 ${isSyncing ? "animate-spin" : ""}`} />
+              <span className="hidden sm:inline">{isSyncing ? "Syncing..." : "Sync"}</span>
+            </Button>
+          )}
+        </div>
       </div>
 
       {syncStatus.type && (

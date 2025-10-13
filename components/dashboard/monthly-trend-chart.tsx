@@ -14,13 +14,15 @@ import {
   YAxis,
 } from "recharts"
 import type { MonthlyStats } from "@/lib/types"
-import { formatCurrency, formatPercent, getMonthName } from "@/lib/utils/format"
+import { formatPercent, getMonthName } from "@/lib/utils/format"
+import { useCurrencyFormat } from "@/lib/hooks/useCurrencyFormat"
 
 interface MonthlyTrendChartProps {
   data: MonthlyStats[]
 }
 
 export function MonthlyTrendChart({ data }: MonthlyTrendChartProps) {
+  const { formatCurrency } = useCurrencyFormat()
   if (!data || data.length === 0) {
     return (
       <Card>

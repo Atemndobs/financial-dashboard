@@ -68,7 +68,7 @@ export function DashboardClient({ availableYears, availableAccounts }: Dashboard
   }, [filters])
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-4 sm:space-y-8">
       <FilterBar
         filters={filters}
         onFiltersChange={setFilters}
@@ -82,7 +82,7 @@ export function DashboardClient({ availableYears, availableAccounts }: Dashboard
         <>
           <YearlyKPIs summary={yearlySummary} />
 
-          <div className="grid gap-6">
+          <div className="grid gap-4 sm:gap-6">
             <MonthlyTrendChart data={monthlyStats} />
             <CategoryBreakdownChart data={categoryStats} />
           </div>

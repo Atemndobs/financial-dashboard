@@ -1,8 +1,11 @@
+"use client"
+
 import type React from "react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { ArrowUpIcon, ArrowDownIcon, TrendingUpIcon } from "lucide-react"
-import { formatCurrency, formatPercent } from "@/lib/utils/format"
+import { formatPercent } from "@/lib/utils/format"
 import { cn } from "@/lib/utils"
+import { useCurrencyFormat } from "@/lib/hooks/useCurrencyFormat"
 
 interface KPICardProps {
   title: string
@@ -13,6 +16,7 @@ interface KPICardProps {
   subtitle?: string
   icon?: React.ReactNode
   variant?: "default" | "income" | "expense" | "savings"
+  className?: string
 }
 
 export function KPICard({
@@ -24,7 +28,10 @@ export function KPICard({
   subtitle,
   icon,
   variant = "default",
+  className,
 }: KPICardProps) {
+  const { formatCurrency } = useCurrencyFormat()
+
   const formattedValue = isCurrency
     ? formatCurrency(value)
     : isPercentage
@@ -39,29 +46,29 @@ export function KPICard({
   }
 
   return (
-    <Card className={cn("overflow-hidden", variantStyles[variant])}>
-      <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-        <CardTitle className="text-sm font-medium text-muted-foreground">{title}</CardTitle>
-        {icon && <div className="text-muted-foreground">{icon}</div>}
+    <Card className={cn("overflow-hidden", variantStyles[variant], className)}>
+      <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-1 sm:pb-2">
+        <CardTitle className="text-xs sm:text-sm font-medium text-muted-foreground">{title}</CardTitle>
+        {icon && <div className="text-muted-foreground hidden sm:block">{icon}</div>}
       </CardHeader>
-      <CardContent>
-        <div className="flex items-baseline gap-2">
-          <div className="text-3xl font-bold tracking-tight">{formattedValue}</div>
+      <CardContent className="pb-3 sm:pb-6">
+        <div className="flex items-baseline gap-1 sm:gap-2">
+          <div className="text-xl sm:text-3xl font-bold tracking-tight">{formattedValue}</div>
           {trend && (
             <div
-              className={cn("flex items-center text-sm font-medium", {
+              className={cn("flex items-center text-xs sm:text-sm font-medium", {
                 "text-emerald-600 dark:text-emerald-400": trend === "up",
                 "text-rose-600 dark:text-rose-400": trend === "down",
                 "text-muted-foreground": trend === "neutral",
               })}
             >
-              {trend === "up" && <ArrowUpIcon className="h-4 w-4" />}
-              {trend === "down" && <ArrowDownIcon className="h-4 w-4" />}
-              {trend === "neutral" && <TrendingUpIcon className="h-4 w-4" />}
+              {trend === "up" && <ArrowUpIcon className="h-3 w-3 sm:h-4 sm:w-4" />}
+              {trend === "down" && <ArrowDownIcon className="h-3 w-3 sm:h-4 sm:w-4" />}
+              {trend === "neutral" && <TrendingUpIcon className="h-3 w-3 sm:h-4 sm:w-4" />}
             </div>
           )}
         </div>
-        {subtitle && <p className="text-xs text-muted-foreground mt-1">{subtitle}</p>}
+        {subtitle && <p className="text-[10px] sm:text-xs text-muted-foreground mt-0.5 sm:mt-1">{subtitle}</p>}
       </CardContent>
     </Card>
   )

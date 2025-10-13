@@ -6,8 +6,9 @@ import { Badge } from "@/components/ui/badge"
 import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area"
 import { Bar, BarChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts"
 import type { MonthlyStats, CategoryStats } from "@/lib/types"
-import { formatCurrency, formatPercent, getMonthName } from "@/lib/utils/format"
+import { formatPercent, getMonthName } from "@/lib/utils/format"
 import { cn } from "@/lib/utils"
+import { useCurrencyFormat } from "@/lib/hooks/useCurrencyFormat"
 
 interface MonthlyExplorerProps {
   monthlyStats: MonthlyStats[]
@@ -15,6 +16,7 @@ interface MonthlyExplorerProps {
 }
 
 export function MonthlyExplorer({ monthlyStats, categoryStats }: MonthlyExplorerProps) {
+  const { formatCurrency } = useCurrencyFormat()
   const [selectedMonth, setSelectedMonth] = useState<string | null>(
     monthlyStats.length > 0 ? monthlyStats[0].month_label : null,
   )
@@ -53,16 +55,16 @@ export function MonthlyExplorer({ monthlyStats, categoryStats }: MonthlyExplorer
                   key={month.month_label}
                   onClick={() => setSelectedMonth(month.month_label)}
                   className={cn(
-                    "flex flex-col items-center gap-1 px-4 py-3 rounded-lg border transition-all min-w-[120px]",
+                    "flex flex-col items-center gap-1 px-4 py-3 rounded-lg border-2 transition-all min-w-[120px]",
                     isSelected
-                      ? "bg-primary text-primary-foreground border-primary shadow-md"
-                      : "bg-card hover:bg-accent hover:border-accent-foreground/20",
+                      ? "bg-primary text-primary-foreground border-primary shadow-lg ring-2 ring-primary ring-offset-2 scale-105"
+                      : "bg-card hover:bg-accent hover:border-accent-foreground/20 border-border",
                   )}
                 >
-                  <span className="text-sm font-medium">
+                  <span className={cn("text-sm font-medium", isSelected && "font-bold")}>
                     {getMonthName(month.month)} {month.year}
                   </span>
-                  <span className={cn("text-xs", isSelected ? "text-primary-foreground/80" : "text-muted-foreground")}>
+                  <span className={cn("text-xs", isSelected ? "text-primary-foreground/90 font-semibold" : "text-muted-foreground")}>
                     {formatCurrency(month.total_expense)}
                   </span>
                 </button>

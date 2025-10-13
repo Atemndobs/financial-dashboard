@@ -16,13 +16,15 @@ export function YearlyKPIs({ summary }: YearlyKPIsProps) {
   }
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-3 sm:space-y-4">
       <div>
-        <h2 className="text-2xl font-bold tracking-tight">Yearly Overview</h2>
-        <p className="text-muted-foreground">Key financial metrics for {summary.year}</p>
+        <h2 className="text-xl sm:text-2xl font-bold tracking-tight">
+          Yearly Overview <span className="text-muted-foreground">{summary.year}</span>
+        </h2>
+        <p className="text-sm text-muted-foreground hidden sm:block">Key financial metrics for {summary.year}</p>
       </div>
 
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+      <div className="grid gap-3 sm:gap-4 md:grid-cols-2 lg:grid-cols-4">
         <KPICard
           title="Total Income"
           value={summary.total_income}
@@ -60,7 +62,7 @@ export function YearlyKPIs({ summary }: YearlyKPIsProps) {
         />
       </div>
 
-      <div className="grid gap-4 md:grid-cols-3">
+      <div className="grid gap-3 sm:gap-4 grid-cols-2 md:grid-cols-3">
         <KPICard
           title="Avg Monthly Income"
           value={summary.avg_monthly_income}
@@ -75,7 +77,12 @@ export function YearlyKPIs({ summary }: YearlyKPIsProps) {
           subtitle="Average per month"
         />
 
-        <KPICard title="Accounts" value={summary.account_count} subtitle={`${summary.account_count} active accounts`} />
+        <KPICard
+          title="Accounts"
+          value={summary.account_count}
+          subtitle={`${summary.account_count} active accounts`}
+          className="hidden md:block"
+        />
       </div>
     </div>
   )

@@ -9,15 +9,17 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { EyeIcon, EyeOffIcon, SearchIcon, ChevronLeft, ChevronRight } from "lucide-react"
 import type { Transaction } from "@/lib/types"
-import { formatCurrency, formatDate } from "@/lib/utils/format"
+import { formatDate } from "@/lib/utils/format"
 import { toggleTransactionExclusion } from "@/lib/data/actions"
 import { cn } from "@/lib/utils"
+import { useCurrencyFormat } from "@/lib/hooks/useCurrencyFormat"
 
 interface TransactionsTableProps {
   initialTransactions: Transaction[]
 }
 
 export function TransactionsTable({ initialTransactions }: TransactionsTableProps) {
+  const { formatCurrency } = useCurrencyFormat()
   const [transactions, setTransactions] = useState(initialTransactions)
   const [searchTerm, setSearchTerm] = useState("")
   const [categoryFilter, setCategoryFilter] = useState<string>("all")
@@ -41,11 +43,24 @@ export function TransactionsTable({ initialTransactions }: TransactionsTableProp
     return matchesSearch && matchesCategory
   })
 
+  // Sort transactions: income (positive amounts) first, then expenses (negative amounts)
+  const sortedTransactions = [...filteredTransactions].sort((a, b) => {
+    // If both are income or both are expenses, maintain original order
+    if ((a.amount >= 0 && b.amount >= 0) || (a.amount < 0 && b.amount < 0)) {
+      return 0
+    }
+    // Pin income at the top
+    return b.amount - a.amount
+  })
+
+  // Get unique categories from filtered transactions
+  const filteredCategories = Array.from(new Set(filteredTransactions.map((t) => t.category)))
+
   // Calculate pagination
-  const totalPages = Math.ceil(filteredTransactions.length / itemsPerPage)
+  const totalPages = Math.ceil(sortedTransactions.length / itemsPerPage)
   const startIndex = (currentPage - 1) * itemsPerPage
   const endIndex = startIndex + itemsPerPage
-  const paginatedTransactions = filteredTransactions.slice(startIndex, endIndex)
+  const paginatedTransactions = sortedTransactions.slice(startIndex, endIndex)
 
   // Reset to page 1 when filters change
   const handleSearchChange = (value: string) => {
@@ -80,18 +95,60 @@ export function TransactionsTable({ initialTransactions }: TransactionsTableProp
     }
   }
 
-  const excludedCount = transactions.filter((t) => t.user_excluded).length
-  const excludedAmount = transactions.filter((t) => t.user_excluded).reduce((sum, t) => sum + Math.abs(t.amount), 0)
+  // Calculate stats from filtered transactions
+  const excludedCount = filteredTransactions.filter((t) => t.user_excluded).length
+  const excludedAmount = filteredTransactions.filter((t) => t.user_excluded).reduce((sum, t) => sum + Math.abs(t.amount), 0)
+
+  // Calculate total for filtered transactions (net)
+  const filteredTotal = filteredTransactions.reduce((sum, t) => {
+    if (t.user_excluded) return sum
+    return sum + t.amount
+  }, 0)
+
+  // Calculate TOTAL income from ALL transactions (not just filtered category)
+  const totalIncome = transactions.reduce((sum, t) => {
+    if (t.user_excluded || t.amount < 0) return sum
+    return sum + t.amount
+  }, 0)
+
+  // Calculate what percentage of total income this filtered category represents (only for expenses)
+  const categoryPercentageOfIncome = totalIncome > 0 && filteredTotal < 0
+    ? (Math.abs(filteredTotal) / totalIncome) * 100
+    : 0
 
   return (
     <Card>
       <CardHeader>
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-          <div>
+          <div className="space-y-1">
             <CardTitle>Transactions</CardTitle>
             <CardDescription>
-              {filteredTransactions.length} transactions • {excludedCount} excluded ({formatCurrency(excludedAmount)})
+              {filteredTransactions.length} transactions • {filteredCategories.length} categories • {excludedCount} excluded ({formatCurrency(excludedAmount)})
             </CardDescription>
+            <div className="text-sm font-medium mt-1 flex flex-wrap items-center gap-x-4 gap-y-1">
+              <div>
+                Total: <span className={cn(
+                  "font-semibold",
+                  filteredTotal >= 0 ? "text-emerald-600 dark:text-emerald-400" : "text-rose-600 dark:text-rose-400"
+                )}>
+                  {formatCurrency(filteredTotal)}
+                </span>
+              </div>
+              {totalIncome > 0 && (
+                <div>
+                  Income: <span className="font-semibold text-emerald-600 dark:text-emerald-400">
+                    {formatCurrency(totalIncome)}
+                  </span>
+                </div>
+              )}
+              {categoryPercentageOfIncome > 0 && (
+                <div>
+                  <span className="text-muted-foreground">
+                    ({categoryPercentageOfIncome.toFixed(1)}% of income)
+                  </span>
+                </div>
+              )}
+            </div>
           </div>
         </div>
       </CardHeader>
@@ -240,12 +297,12 @@ export function TransactionsTable({ initialTransactions }: TransactionsTableProp
         </div>
 
         {/* Pagination */}
-        {filteredTransactions.length > 0 && (
+        {sortedTransactions.length > 0 && (
           <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
             <div className="text-sm text-muted-foreground">
-              Showing {startIndex + 1} to {Math.min(endIndex, filteredTransactions.length)} of{" "}
-              {filteredTransactions.length} transactions
-              {transactions.length !== filteredTransactions.length && ` (filtered from ${transactions.length})`}
+              Showing {startIndex + 1} to {Math.min(endIndex, sortedTransactions.length)} of{" "}
+              {sortedTransactions.length} transactions
+              {transactions.length !== sortedTransactions.length && ` (filtered from ${transactions.length})`}
             </div>
             <div className="flex items-center gap-2">
               <Button
@@ -258,7 +315,8 @@ export function TransactionsTable({ initialTransactions }: TransactionsTableProp
                 Previous
               </Button>
               <div className="text-sm font-medium px-2">
-                Page {currentPage} of {totalPages}
+                <span className="hidden sm:inline">Page </span>
+                {currentPage} of {totalPages}
               </div>
               <Button
                 variant="outline"
