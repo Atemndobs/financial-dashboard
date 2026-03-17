@@ -5,7 +5,6 @@ import { formatDate } from "@/lib/utils/format"
 import { Button } from "@/components/ui/button"
 import { RefreshCw, AlertCircle } from "lucide-react"
 import { Alert, AlertDescription } from "@/components/ui/alert"
-import { CurrencySelector } from "@/components/dashboard/currency-selector"
 import { UserMenu } from "@/components/user-menu"
 
 export function DashboardHeader() {
@@ -67,7 +66,6 @@ export function DashboardHeader() {
         </div>
 
         <div className="flex items-center gap-2 w-full sm:w-auto justify-between sm:justify-end">
-          <CurrencySelector />
           {isDevelopment && (
             <Button onClick={handleSync} disabled={isSyncing} variant="outline" className="gap-2">
               <RefreshCw className={`h-4 w-4 ${isSyncing ? "animate-spin" : ""}`} />
