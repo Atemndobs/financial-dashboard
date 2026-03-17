@@ -1,144 +1,112 @@
-import { createClient } from "@/lib/supabase/server"
+import { auth } from "@clerk/nextjs/server"
+import { runConvexQuery } from "@/lib/convex/server"
 import type { Transaction, Category, MonthlyStats, CategoryStats, YearlySummary, FilterState } from "@/lib/types"
 
-export async function getCategories(): Promise<Category[]> {
-  const supabase = await createClient()
-  const { data, error } = await supabase.from("fin_categories").select("*").eq("is_active", true).order("sort_order")
+async function getCurrentUserId() {
+  const { userId } = await auth()
 
-  if (error) {
+  if (!userId) {
+    throw new Error("Unauthorized")
+  }
+
+  return userId
+}
+
+export async function getCategories(): Promise<Category[]> {
+  try {
+    return await runConvexQuery<Record<string, never>, Category[]>("dashboard:getCategories", {})
+  } catch (error) {
     console.error("[v0] Error fetching categories:", error)
     return []
   }
-
-  return data || []
 }
 
 export async function getYearlySummary(filters: FilterState): Promise<YearlySummary[]> {
-  const supabase = await createClient()
-  let query = supabase.from("fin_yearly_summary").select("*")
-
-  if (filters.year) {
-    query = query.eq("year", filters.year)
-  }
-
-  query = query.order("year", { ascending: false })
-
-  const { data, error } = await query
-
-  if (error) {
+  try {
+    const userId = await getCurrentUserId()
+    return await runConvexQuery<{ userId: string; year: number | null }, YearlySummary[]>("dashboard:getYearlySummary", {
+      userId,
+      year: filters.year,
+    })
+  } catch (error) {
     console.error("[v0] Error fetching yearly summary:", error)
     return []
   }
-
-  return data || []
 }
 
 export async function getMonthlyStats(filters: FilterState): Promise<MonthlyStats[]> {
-  const supabase = await createClient()
-  let query = supabase.from("fin_monthly_stats").select("*")
-
-  if (filters.year) {
-    query = query.eq("year", filters.year)
-  }
-
-  if (filters.account) {
-    query = query.eq("account", filters.account)
-  }
-
-  query = query.order("year", { ascending: false }).order("month", { ascending: false })
-
-  const { data, error } = await query
-
-  if (error) {
+  try {
+    const userId = await getCurrentUserId()
+    return await runConvexQuery<{ userId: string; year: number | null; account: string | null }, MonthlyStats[]>(
+      "dashboard:getMonthlyStats",
+      {
+        userId,
+        year: filters.year,
+        account: filters.account,
+      },
+    )
+  } catch (error) {
     console.error("[v0] Error fetching monthly stats:", error)
     return []
   }
-
-  return data || []
 }
 
 export async function getCategoryStats(filters: FilterState): Promise<CategoryStats[]> {
-  const supabase = await createClient()
-  let query = supabase.from("fin_category_stats").select("*")
-
-  if (filters.year) {
-    query = query.eq("year", filters.year)
-  }
-
-  query = query.order("total_amount", { ascending: false })
-
-  const { data, error } = await query
-
-  if (error) {
+  try {
+    const userId = await getCurrentUserId()
+    return await runConvexQuery<{ userId: string; year: number | null }, CategoryStats[]>("dashboard:getCategoryStats", {
+      userId,
+      year: filters.year,
+    })
+  } catch (error) {
     console.error("[v0] Error fetching category stats:", error)
     return []
   }
-
-  return data || []
 }
 
 export async function getTransactions(filters: FilterState, limit?: number): Promise<Transaction[]> {
-  const supabase = await createClient()
-
-  // Use the fin_recent_transactions view which already has category colors and icons
-  let query = supabase.from("fin_recent_transactions").select("*").eq("user_excluded", false)
-
-  if (!filters.includeTransfers) {
-    query = query.neq("type", "transfer")
-  }
-
-  if (!filters.includeSavings) {
-    query = query.eq("exclude_from_spending", false)
-  }
-
-  if (filters.year) {
-    query = query.eq("year", filters.year)
-  }
-
-  if (filters.account) {
-    query = query.eq("account", filters.account)
-  }
-
-  query = query.order("date", { ascending: false })
-
-  if (limit) {
-    query = query.limit(limit)
-  }
-
-  const { data, error } = await query
-
-  if (error) {
+  try {
+    const userId = await getCurrentUserId()
+    return await runConvexQuery<
+      {
+        userId: string
+        year: number | null
+        account: string | null
+        includeTransfers: boolean
+        includeSavings: boolean
+        limit?: number
+      },
+      Transaction[]
+    >("dashboard:getTransactions", {
+      userId,
+      year: filters.year,
+      account: filters.account,
+      includeTransfers: filters.includeTransfers,
+      includeSavings: filters.includeSavings,
+      ...(typeof limit === "number" ? { limit } : {}),
+    })
+  } catch (error) {
     console.error("[v0] Error fetching transactions:", error)
     return []
   }
-
-  return data || []
 }
 
 export async function getAvailableYears(): Promise<number[]> {
-  const supabase = await createClient()
-
-  // Get distinct years from the yearly summary view for better performance
-  const { data, error } = await supabase.from("fin_yearly_summary").select("year").order("year", { ascending: false })
-
-  if (error) {
+  try {
+    const userId = await getCurrentUserId()
+    return await runConvexQuery<{ userId: string }, number[]>("dashboard:getAvailableYears", { userId })
+  } catch (error) {
     console.error("[v0] Error fetching years:", error)
     return []
   }
-
-  return data.map((d) => d.year)
 }
 
 export async function getAvailableAccounts(): Promise<string[]> {
-  const supabase = await createClient()
-
-  // Use the account summary view for better performance
-  const { data, error } = await supabase.from("fin_account_summary").select("account").order("account")
-
-  if (error) {
+  try {
+    const userId = await getCurrentUserId()
+    return await runConvexQuery<{ userId: string }, string[]>("dashboard:getAvailableAccounts", { userId })
+  } catch (error) {
     console.error("[v0] Error fetching accounts:", error)
     return []
   }
-
-  return data.map((d) => d.account)
 }

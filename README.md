@@ -1,6 +1,6 @@
 # Finance Dashboard - Web App
 
-A modern, responsive financial dashboard built with Next.js 14, React, and Supabase for visualizing and managing personal finance data.
+A modern, responsive financial dashboard built with Next.js, React, Convex, and Clerk for visualizing and managing personal finance data.
 
 ## Features
 
@@ -14,9 +14,10 @@ A modern, responsive financial dashboard built with Next.js 14, React, and Supab
 
 ## Tech Stack
 
-- **Framework:** Next.js 14 (App Router)
+- **Framework:** Next.js 15 (App Router)
 - **Language:** TypeScript
-- **Database:** Supabase (PostgreSQL)
+- **Backend/Data:** Convex
+- **Authentication:** Clerk
 - **Styling:** Tailwind CSS
 - **UI Components:** shadcn/ui + Radix UI
 - **Charts:** Recharts
@@ -28,7 +29,8 @@ A modern, responsive financial dashboard built with Next.js 14, React, and Supab
 
 - Node.js 18+
 - npm or pnpm
-- Supabase account and project
+- Convex project
+- Clerk application
 
 ### Installation
 
@@ -50,8 +52,12 @@ pnpm install
 Create a `.env.local` file in the root directory:
 
 ```env
-NEXT_PUBLIC_SUPABASE_URL=your_supabase_url
-NEXT_PUBLIC_SUPABASE_ANON_KEY=your_supabase_anon_key
+NEXT_PUBLIC_CONVEX_URL=your_convex_deployment_url
+NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY=your_clerk_publishable_key
+CLERK_SECRET_KEY=your_clerk_secret_key
+MIGRATION_CLERK_USER_ID=your_target_clerk_user_id
+SUPABASE_URL=your_supabase_url
+SUPABASE_SERVICE_ROLE_KEY=your_supabase_service_role_key
 ```
 
 4. Run the development server:
@@ -63,16 +69,25 @@ pnpm dev
 
 Open [http://localhost:3000](http://localhost:3000) to view the dashboard.
 
-## Database Setup
+## Data Setup
 
-The app expects the following Supabase tables:
+The Convex schema includes these migrated tables:
 
 - `fin_transactions` - Main transaction data
-- `fin_category_stats` - Category statistics
-- `fin_monthly_stats` - Monthly aggregated statistics
-- `fin_yearly_summary` - Yearly summary data
+- `fin_categories` - Category definitions
+- `fin_exclusions` - User exclusions
+- `fin_sync_log` - Sync history
 
-Refer to the parent project's `supabase_migration_v2.sql` for the complete schema.
+View-equivalent aggregates are implemented as Convex queries:
+
+- `monthly_stats`
+- `category_stats`
+
+Run migration from Supabase:
+
+```bash
+npm run migrate:convex
+```
 
 ## Development
 
@@ -86,9 +101,11 @@ finance-dashboard/
 │   └── ui/                # Reusable UI components (shadcn/ui)
 ├── lib/
 │   ├── data/              # Data fetching and actions
-│   ├── supabase/          # Supabase client configuration
+│   ├── convex/            # Convex server client helpers
 │   ├── types/             # TypeScript type definitions
 │   └── utils/             # Utility functions
+├── convex/                # Convex schema and functions
+├── scripts/               # Migration scripts
 ├── public/                # Static assets
 └── styles/                # Global styles
 ```
@@ -99,6 +116,7 @@ finance-dashboard/
 - `npm run build` - Build for production
 - `npm run start` - Start production server
 - `npm run lint` - Run ESLint
+- `npm run migrate:convex` - Migrate Supabase data to Convex
 
 ## Deployment
 
@@ -115,8 +133,12 @@ finance-dashboard/
 
 | Variable | Description | Required |
 |----------|-------------|----------|
-| `NEXT_PUBLIC_SUPABASE_URL` | Your Supabase project URL | Yes |
-| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Your Supabase anonymous key | Yes |
+| `NEXT_PUBLIC_CONVEX_URL` | Convex deployment URL | Yes |
+| `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY` | Clerk frontend key | Yes |
+| `CLERK_SECRET_KEY` | Clerk backend secret key | Yes |
+| `MIGRATION_CLERK_USER_ID` | Clerk user id for imported data | For migration |
+| `SUPABASE_URL` | Legacy Supabase URL | For migration |
+| `SUPABASE_SERVICE_ROLE_KEY` | Supabase service-role key | For migration |
 
 ## Features in Detail
 
@@ -150,8 +172,8 @@ MIT
 This web dashboard is part of a larger finance management system that includes:
 - Desktop categorization tool (Python)
 - PDF extraction tool (Python)
-- Supabase sync utilities
+- Convex sync utilities
 
 ---
 
-Built with ❤️ using Next.js and Supabase
+Built with ❤️ using Next.js, Convex, and Clerk

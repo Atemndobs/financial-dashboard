@@ -1,29 +1,38 @@
 "use server"
 
-import { createClient } from "@/lib/supabase/server"
+import { auth } from "@clerk/nextjs/server"
+import { runConvexMutation } from "@/lib/convex/server"
 import { revalidatePath } from "next/cache"
 
 export async function toggleTransactionExclusion(transactionId: string, exclude: boolean) {
-  const supabase = await createClient()
+  const { userId } = await auth()
 
-  const { error } = await supabase
-    .from("fin_transactions")
-    .update({ user_excluded: exclude })
-    .eq("transaction_id", transactionId)
-
-  if (error) {
-    console.error("[v0] Error toggling exclusion:", error)
-    return { success: false, error: error.message }
+  if (!userId) {
+    return { success: false, error: "Unauthorized" }
   }
 
-  // Also update the exclusions table
-  if (exclude) {
-    await supabase.from("fin_exclusions").insert({
-      transaction_id: transactionId,
+  try {
+    const result = await runConvexMutation<
+      {
+        userId: string
+        transactionId: string
+        exclude: boolean
+        reason: string
+      },
+      { success: boolean; error?: string }
+    >("dashboard:toggleTransactionExclusion", {
+      userId,
+      transactionId,
+      exclude,
       reason: "User excluded via dashboard",
     })
-  } else {
-    await supabase.from("fin_exclusions").delete().eq("transaction_id", transactionId)
+
+    if (!result.success) {
+      return result
+    }
+  } catch (error) {
+    console.error("[v0] Error toggling exclusion:", error)
+    return { success: false, error: "Failed to update transaction exclusion" }
   }
 
   revalidatePath("/")

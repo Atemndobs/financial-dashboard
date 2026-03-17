@@ -5,6 +5,8 @@ import { formatDate } from "@/lib/utils/format"
 import { Button } from "@/components/ui/button"
 import { RefreshCw, AlertCircle } from "lucide-react"
 import { Alert, AlertDescription } from "@/components/ui/alert"
+import { CurrencySelector } from "@/components/dashboard/currency-selector"
+import { UserMenu } from "@/components/user-menu"
 
 export function DashboardHeader() {
   const currentDate = new Date()
@@ -21,7 +23,7 @@ export function DashboardHeader() {
 
     try {
       // Call the Python backend sync endpoint
-      const response = await fetch("http://localhost:8000/supabase/sync", {
+      const response = await fetch("http://localhost:8000/convex/sync", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -48,7 +50,7 @@ export function DashboardHeader() {
     } catch (error) {
       setSyncStatus({
         type: "error",
-        message: `❌ Failed to connect to backend API at http://localhost:8000. Make sure the Python backend is running.`,
+        message: `❌ Failed to connect to backend API at http://localhost:8000. Make sure the backend is running.`,
       })
     } finally {
       setIsSyncing(false)
@@ -64,12 +66,16 @@ export function DashboardHeader() {
           <p className="text-sm text-muted-foreground">Last updated: {formatDate(currentDate.toISOString())}</p>
         </div>
 
-        {isDevelopment && (
-          <Button onClick={handleSync} disabled={isSyncing} variant="outline" className="gap-2">
-            <RefreshCw className={`h-4 w-4 ${isSyncing ? "animate-spin" : ""}`} />
-            {isSyncing ? "Syncing..." : "Sync to Supabase"}
-          </Button>
-        )}
+        <div className="flex items-center gap-2 w-full sm:w-auto justify-between sm:justify-end">
+          <CurrencySelector />
+          {isDevelopment && (
+            <Button onClick={handleSync} disabled={isSyncing} variant="outline" className="gap-2">
+              <RefreshCw className={`h-4 w-4 ${isSyncing ? "animate-spin" : ""}`} />
+              {isSyncing ? "Syncing..." : "Sync to Convex"}
+            </Button>
+          )}
+          <UserMenu />
+        </div>
       </div>
 
       {syncStatus.type && (
