@@ -1,9 +1,9 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
-import { useSignIn } from '@clerk/nextjs'
+import { useSignIn, useUser } from '@clerk/nextjs'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -18,7 +18,16 @@ export default function LoginPage() {
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
   const { isLoaded, signIn, setActive } = useSignIn()
+  const { isSignedIn } = useUser()
   const router = useRouter()
+
+  // Redirect if already signed in
+  useEffect(() => {
+    if (isSignedIn) {
+      router.push('/')
+      router.refresh()
+    }
+  }, [isSignedIn, router])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
