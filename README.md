@@ -8,6 +8,8 @@ A modern, responsive financial dashboard built with Next.js, React, Convex, and 
 - 💰 **KPI Cards** - Quick overview of income, expenses, and savings
 - 🔍 **Advanced Filtering** - Filter by year, account, and toggle transfers/savings
 - 📋 **Transaction Management** - Browse, search, and exclude transactions with pagination
+- 🇨🇭 **Swiss Tax Preparation** - Yearly deduction overview, checklist, and CSV/PDF exports
+- 📥 **PDF Import** - Upload PostFinance monthly statements directly from the dashboard
 - 🎨 **Modern UI** - Built with Tailwind CSS and shadcn/ui components
 - 🌓 **Dark Mode** - Full dark mode support
 - 📱 **Responsive** - Works seamlessly on desktop, tablet, and mobile
@@ -22,6 +24,29 @@ A modern, responsive financial dashboard built with Next.js, React, Convex, and 
 - **UI Components:** shadcn/ui + Radix UI
 - **Charts:** Recharts
 - **Deployment:** Vercel
+
+## PDF Import (bank statements)
+
+The dashboard header has an **Import PDF** action. It posts the uploaded
+PostFinance statement to `POST /api/imports/postfinance`, which:
+
+1. Verifies the Clerk session (rejects unauthenticated requests).
+2. Calls the Convex Node action `imports:importPostFinancePdf` with the file
+   bytes and the trusted `userId`.
+3. The Convex action parses the PDF (`pdf-parse`), categorizes rows
+   (`convex/lib/rules.ts`), and upserts via `migration:upsertTransactionsBatch`.
+4. Returns a structured import result: counts, month range, warnings, errors.
+
+There is no Python backend in production — the entire pipeline runs on
+Vercel (the route handler) and Convex (the Node action). No extra hosting.
+
+Required environment:
+
+- `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY`, `CLERK_SECRET_KEY` — Clerk.
+- `NEXT_PUBLIC_CONVEX_URL` — Convex deployment URL.
+
+Re-imports are idempotent: the Convex mutation dedupes on `transaction_id`
+per Clerk user, so re-uploading the same statement does not create duplicates.
 
 ## Getting Started
 
@@ -87,6 +112,12 @@ Run migration from Supabase:
 
 ```bash
 npm run migrate:convex
+```
+
+Or import prepared JSON directly into Convex (no Supabase hop):
+
+```bash
+npm run import:convex:json -- --input ../exports/transactions.json --user-id <clerk_user_id> --convex-url <convex_url>
 ```
 
 ## Development

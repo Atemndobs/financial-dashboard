@@ -13,14 +13,15 @@ import {
   XAxis,
   YAxis,
 } from "recharts"
-import type { MonthlyStats } from "@/lib/types"
-import { formatCurrency, formatPercent, getMonthName } from "@/lib/utils/format"
+import type { MonthlyStats, SupportedCurrency } from "@/lib/types"
+import { convertAmount, formatCurrency, formatPercent, getMonthName } from "@/lib/utils/format"
 
 interface MonthlyTrendChartProps {
   data: MonthlyStats[]
+  displayCurrency: SupportedCurrency
 }
 
-export function MonthlyTrendChart({ data }: MonthlyTrendChartProps) {
+export function MonthlyTrendChart({ data, displayCurrency }: MonthlyTrendChartProps) {
   if (!data || data.length === 0) {
     return (
       <Card>
@@ -43,9 +44,9 @@ export function MonthlyTrendChart({ data }: MonthlyTrendChartProps) {
 
   const chartData = sortedData.map((item) => ({
     month: `${getMonthName(item.month).slice(0, 3)} ${item.year}`,
-    income: item.total_income,
-    expense: item.total_expense,
-    net: item.net,
+    income: convertAmount(item.total_income, displayCurrency),
+    expense: convertAmount(item.total_expense, displayCurrency),
+    net: convertAmount(item.net, displayCurrency),
     savingsRate: item.savings_rate,
   }))
 
@@ -77,15 +78,15 @@ export function MonthlyTrendChart({ data }: MonthlyTrendChartProps) {
                           <div className="space-y-1">
                             <p className="text-sm flex items-center gap-2 text-slate-700 dark:text-slate-300">
                               <span className="h-3 w-3 rounded-full bg-emerald-500" />
-                              Income: {formatCurrency(payload[0].payload.income)}
+                              Income: {formatCurrency(payload[0].payload.income, displayCurrency, displayCurrency)}
                             </p>
                             <p className="text-sm flex items-center gap-2 text-slate-700 dark:text-slate-300">
                               <span className="h-3 w-3 rounded-full bg-rose-500" />
-                              Expense: {formatCurrency(payload[0].payload.expense)}
+                              Expense: {formatCurrency(payload[0].payload.expense, displayCurrency, displayCurrency)}
                             </p>
                             <p className="text-sm flex items-center gap-2 text-slate-700 dark:text-slate-300">
                               <span className="h-3 w-3 rounded-full bg-blue-500" />
-                              Net: {formatCurrency(payload[0].payload.net)}
+                              Net: {formatCurrency(payload[0].payload.net, displayCurrency, displayCurrency)}
                             </p>
                           </div>
                         </div>

@@ -2,6 +2,7 @@ import type React from "react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { ArrowUpIcon, ArrowDownIcon, TrendingUpIcon } from "lucide-react"
 import { formatCurrency, formatPercent } from "@/lib/utils/format"
+import type { SupportedCurrency } from "@/lib/types"
 import { cn } from "@/lib/utils"
 
 interface KPICardProps {
@@ -13,6 +14,7 @@ interface KPICardProps {
   subtitle?: string
   icon?: React.ReactNode
   variant?: "default" | "income" | "expense" | "savings"
+  currency?: SupportedCurrency
 }
 
 export function KPICard({
@@ -24,9 +26,10 @@ export function KPICard({
   subtitle,
   icon,
   variant = "default",
+  currency = "CHF",
 }: KPICardProps) {
   const formattedValue = isCurrency
-    ? formatCurrency(value)
+    ? formatCurrency(value, currency)
     : isPercentage
       ? formatPercent(value)
       : value.toLocaleString()

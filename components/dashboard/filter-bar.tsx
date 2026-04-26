@@ -4,16 +4,25 @@ import { Button } from "@/components/ui/button"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Switch } from "@/components/ui/switch"
 import { Label } from "@/components/ui/label"
-import type { FilterState } from "@/lib/types"
+import type { FilterState, SupportedCurrency } from "@/lib/types"
 
 interface FilterBarProps {
   filters: FilterState
   onFiltersChange: (filters: FilterState) => void
   availableYears: number[]
   availableAccounts: string[]
+  displayCurrency: SupportedCurrency
+  onCurrencyChange: (currency: SupportedCurrency) => void
 }
 
-export function FilterBar({ filters, onFiltersChange, availableYears, availableAccounts }: FilterBarProps) {
+export function FilterBar({
+  filters,
+  onFiltersChange,
+  availableYears,
+  availableAccounts,
+  displayCurrency,
+  onCurrencyChange,
+}: FilterBarProps) {
   return (
     <div className="flex flex-col gap-4 p-6 bg-card rounded-lg border">
       <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center justify-between">
@@ -69,6 +78,21 @@ export function FilterBar({ filters, onFiltersChange, availableYears, availableA
               </SelectContent>
             </Select>
           </div>
+
+          {/* Currency Display */}
+          <div className="flex flex-col gap-2 min-w-[140px]">
+            <Label className="text-xs text-muted-foreground">Currency</Label>
+            <Select value={displayCurrency} onValueChange={(value) => onCurrencyChange(value as SupportedCurrency)}>
+              <SelectTrigger>
+                <SelectValue placeholder="Currency" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="CHF">CHF</SelectItem>
+                <SelectItem value="EUR">EUR</SelectItem>
+                <SelectItem value="USD">USD</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
         </div>
 
         {/* Toggle Filters */}
@@ -108,7 +132,7 @@ export function FilterBar({ filters, onFiltersChange, availableYears, availableA
       </div>
 
       {/* Active Filters Display */}
-      {(filters.year || filters.account || !filters.includeTransfers || !filters.includeSavings) && (
+      {(filters.year || filters.account || !filters.includeTransfers || !filters.includeSavings || displayCurrency !== "CHF") && (
         <div className="flex flex-wrap gap-2 pt-2 border-t">
           <span className="text-xs text-muted-foreground">Active filters:</span>
           {filters.year && (
@@ -123,18 +147,22 @@ export function FilterBar({ filters, onFiltersChange, availableYears, availableA
           {!filters.includeSavings && (
             <span className="text-xs px-2 py-1 bg-muted text-muted-foreground rounded-full">Savings excluded</span>
           )}
+          {displayCurrency !== "CHF" && (
+            <span className="text-xs px-2 py-1 bg-primary/10 text-primary rounded-full">{displayCurrency}</span>
+          )}
           <Button
             variant="ghost"
             size="sm"
             className="h-6 text-xs"
-            onClick={() =>
+            onClick={() => {
               onFiltersChange({
                 year: null,
                 account: null,
                 includeTransfers: true,
                 includeSavings: true,
               })
-            }
+              onCurrencyChange("CHF")
+            }}
           >
             Clear all
           </Button>

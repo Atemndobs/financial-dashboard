@@ -1,13 +1,15 @@
 "use client"
 
 import { useState, useEffect } from "react"
+import { DashboardHeader } from "@/components/dashboard/dashboard-header"
 import { FilterBar } from "@/components/dashboard/filter-bar"
 import { YearlyKPIs } from "@/components/dashboard/yearly-kpis"
 import { MonthlyTrendChart } from "@/components/dashboard/monthly-trend-chart"
 import { CategoryBreakdownChart } from "@/components/dashboard/category-breakdown-chart"
 import { MonthlyExplorer } from "@/components/dashboard/monthly-explorer"
 import { TransactionsTable } from "@/components/dashboard/transactions-table"
-import type { FilterState, YearlySummary, MonthlyStats, CategoryStats, Transaction } from "@/lib/types"
+import { useIsMobile } from "@/components/ui/use-mobile"
+import type { FilterState, YearlySummary, MonthlyStats, CategoryStats, Transaction, SupportedCurrency } from "@/lib/types"
 
 interface DashboardClientProps {
   availableYears: number[]
@@ -15,6 +17,7 @@ interface DashboardClientProps {
 }
 
 export function DashboardClient({ availableYears, availableAccounts }: DashboardClientProps) {
+  const isMobile = useIsMobile()
   const [filters, setFilters] = useState<FilterState>({
     year: availableYears[0] || null,
     account: null,
@@ -26,7 +29,13 @@ export function DashboardClient({ availableYears, availableAccounts }: Dashboard
   const [monthlyStats, setMonthlyStats] = useState<MonthlyStats[]>([])
   const [categoryStats, setCategoryStats] = useState<CategoryStats[]>([])
   const [transactions, setTransactions] = useState<Transaction[]>([])
+  const [displayCurrency, setDisplayCurrency] = useState<SupportedCurrency>("CHF")
+  const [isFiltersCollapsed, setIsFiltersCollapsed] = useState(false)
   const [isLoading, setIsLoading] = useState(true)
+
+  useEffect(() => {
+    setIsFiltersCollapsed(isMobile)
+  }, [isMobile])
 
   useEffect(() => {
     async function fetchData() {
@@ -69,27 +78,42 @@ export function DashboardClient({ availableYears, availableAccounts }: Dashboard
 
   return (
     <div className="space-y-8">
-      <FilterBar
-        filters={filters}
-        onFiltersChange={setFilters}
-        availableYears={availableYears}
-        availableAccounts={availableAccounts}
+      <DashboardHeader
+        showFilterToggle={isMobile}
+        isFiltersCollapsed={isFiltersCollapsed}
+        onToggleFilters={() => setIsFiltersCollapsed((prev) => !prev)}
+        activeYear={filters.year}
       />
+
+      {(!isMobile || !isFiltersCollapsed) && (
+        <FilterBar
+          filters={filters}
+          onFiltersChange={setFilters}
+          availableYears={availableYears}
+          availableAccounts={availableAccounts}
+          displayCurrency={displayCurrency}
+          onCurrencyChange={setDisplayCurrency}
+        />
+      )}
 
       {isLoading ? (
         <div className="text-center text-muted-foreground py-12">Loading...</div>
       ) : (
         <>
-          <YearlyKPIs summary={yearlySummary} />
+          <YearlyKPIs summary={yearlySummary} displayCurrency={displayCurrency} />
 
           <div className="grid gap-6">
-            <MonthlyTrendChart data={monthlyStats} />
-            <CategoryBreakdownChart data={categoryStats} />
+            <MonthlyTrendChart data={monthlyStats} displayCurrency={displayCurrency} />
+            <CategoryBreakdownChart data={categoryStats} displayCurrency={displayCurrency} />
           </div>
 
-          <MonthlyExplorer monthlyStats={monthlyStats} categoryStats={categoryStats} />
+          <MonthlyExplorer
+            monthlyStats={monthlyStats}
+            categoryStats={categoryStats}
+            displayCurrency={displayCurrency}
+          />
 
-          <TransactionsTable initialTransactions={transactions} />
+          <TransactionsTable initialTransactions={transactions} displayCurrency={displayCurrency} />
         </>
       )}
     </div>

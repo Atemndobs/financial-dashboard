@@ -8,16 +8,18 @@ import { Input } from "@/components/ui/input"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { EyeIcon, EyeOffIcon, SearchIcon, ChevronLeft, ChevronRight } from "lucide-react"
-import type { Transaction } from "@/lib/types"
+import type { Transaction, SupportedCurrency } from "@/lib/types"
 import { formatCurrency, formatDate } from "@/lib/utils/format"
 import { toggleTransactionExclusion } from "@/lib/data/actions"
 import { cn } from "@/lib/utils"
+import { getCategoryColor, getCategoryIcon } from "@/lib/constants/category-visuals"
 
 interface TransactionsTableProps {
   initialTransactions: Transaction[]
+  displayCurrency: SupportedCurrency
 }
 
-export function TransactionsTable({ initialTransactions }: TransactionsTableProps) {
+export function TransactionsTable({ initialTransactions, displayCurrency }: TransactionsTableProps) {
   const [transactions, setTransactions] = useState(initialTransactions)
   const [searchTerm, setSearchTerm] = useState("")
   const [categoryFilter, setCategoryFilter] = useState<string>("all")
@@ -80,8 +82,10 @@ export function TransactionsTable({ initialTransactions }: TransactionsTableProp
     }
   }
 
-  const excludedCount = transactions.filter((t) => t.user_excluded).length
-  const excludedAmount = transactions.filter((t) => t.user_excluded).reduce((sum, t) => sum + Math.abs(t.amount), 0)
+  const filteredExcludedCount = filteredTransactions.filter((t) => t.user_excluded).length
+  const filteredExcludedAmount = filteredTransactions.reduce((sum, t) => sum + (t.user_excluded ? Math.abs(t.amount) : 0), 0)
+  const filteredTotal = filteredTransactions.reduce((sum, t) => sum + t.amount, 0)
+  const currentPageTotal = paginatedTransactions.reduce((sum, t) => sum + t.amount, 0)
 
   return (
     <Card>
@@ -90,8 +94,13 @@ export function TransactionsTable({ initialTransactions }: TransactionsTableProp
           <div>
             <CardTitle>Transactions</CardTitle>
             <CardDescription>
-              {filteredTransactions.length} transactions • {excludedCount} excluded ({formatCurrency(excludedAmount)})
+              {filteredTransactions.length} transactions • {filteredExcludedCount} excluded in view (
+              {formatCurrency(filteredExcludedAmount, displayCurrency)})
             </CardDescription>
+            <p className="text-sm text-muted-foreground mt-1">
+              Filtered total: {formatCurrency(filteredTotal, displayCurrency)} • This page:{" "}
+              {formatCurrency(currentPageTotal, displayCurrency)}
+            </p>
           </div>
         </div>
       </CardHeader>
@@ -180,8 +189,9 @@ export function TransactionsTable({ initialTransactions }: TransactionsTableProp
                       <div className="flex items-center gap-2">
                         <div
                           className="h-3 w-3 rounded-full flex-shrink-0"
-                          style={{ backgroundColor: transaction.category_color || "#94a3b8" }}
+                          style={{ backgroundColor: getCategoryColor(transaction.category, transaction.category_color) }}
                         />
+                        <span>{getCategoryIcon(transaction.category, transaction.category_icon)}</span>
                         <span className="text-sm truncate cursor-help" title={transaction.category}>
                           {transaction.category}
                         </span>
@@ -200,8 +210,19 @@ export function TransactionsTable({ initialTransactions }: TransactionsTableProp
                           : "text-rose-600 dark:text-rose-400",
                       )}
                     >
-                      {transaction.amount >= 0 ? "+" : ""}
-                      {formatCurrency(transaction.amount)}
+                      {(() => {
+                        const sourceCurrency: SupportedCurrency =
+                          transaction.currency === "EUR" || transaction.currency === "USD" || transaction.currency === "CHF"
+                            ? transaction.currency
+                            : "CHF"
+                        const formatted = formatCurrency(transaction.amount, displayCurrency, sourceCurrency)
+                        return (
+                          <>
+                            {transaction.amount >= 0 ? "+" : ""}
+                            {formatted}
+                          </>
+                        )
+                      })()}
                     </TableCell>
                     <TableCell className="text-center">
                       {transaction.user_excluded ? (

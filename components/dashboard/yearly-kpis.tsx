@@ -1,12 +1,13 @@
 import { KPICard } from "./kpi-card"
 import { TrendingUpIcon, TrendingDownIcon, WalletIcon, PiggyBankIcon } from "lucide-react"
-import type { YearlySummary } from "@/lib/types"
+import type { YearlySummary, SupportedCurrency } from "@/lib/types"
 
 interface YearlyKPIsProps {
   summary: YearlySummary | null
+  displayCurrency: SupportedCurrency
 }
 
-export function YearlyKPIs({ summary }: YearlyKPIsProps) {
+export function YearlyKPIs({ summary, displayCurrency }: YearlyKPIsProps) {
   if (!summary) {
     return (
       <div className="text-center text-muted-foreground py-12 border rounded-lg">
@@ -30,6 +31,7 @@ export function YearlyKPIs({ summary }: YearlyKPIsProps) {
           variant="income"
           icon={<TrendingUpIcon className="h-4 w-4" />}
           subtitle={`${summary.transaction_count} transactions`}
+          currency={displayCurrency}
         />
 
         <KPICard
@@ -39,6 +41,7 @@ export function YearlyKPIs({ summary }: YearlyKPIsProps) {
           variant="expense"
           icon={<TrendingDownIcon className="h-4 w-4" />}
           subtitle={`Across ${summary.category_count} categories`}
+          currency={displayCurrency}
         />
 
         <KPICard
@@ -48,6 +51,7 @@ export function YearlyKPIs({ summary }: YearlyKPIsProps) {
           variant="savings"
           icon={<PiggyBankIcon className="h-4 w-4" />}
           trend={summary.net_savings > 0 ? "up" : summary.net_savings < 0 ? "down" : "neutral"}
+          currency={displayCurrency}
         />
 
         <KPICard
@@ -66,6 +70,7 @@ export function YearlyKPIs({ summary }: YearlyKPIsProps) {
           value={summary.avg_monthly_income}
           isCurrency
           subtitle="Average per month"
+          currency={displayCurrency}
         />
 
         <KPICard
@@ -73,6 +78,7 @@ export function YearlyKPIs({ summary }: YearlyKPIsProps) {
           value={summary.avg_monthly_expense}
           isCurrency
           subtitle="Average per month"
+          currency={displayCurrency}
         />
 
         <KPICard title="Accounts" value={summary.account_count} subtitle={`${summary.account_count} active accounts`} />

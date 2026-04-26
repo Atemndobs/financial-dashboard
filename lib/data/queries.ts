@@ -1,6 +1,14 @@
 import { auth } from "@clerk/nextjs/server"
 import { runConvexQuery } from "@/lib/convex/server"
 import type { Transaction, Category, MonthlyStats, CategoryStats, YearlySummary, FilterState } from "@/lib/types"
+import type { TaxTransaction } from "@/lib/tax/types"
+
+export interface TaxDiagnostics {
+  user_id: string
+  transaction_count: number
+  tax_years: number[]
+  latest_transaction_date: string | null
+}
 
 async function getCurrentUserId() {
   const { userId } = await auth()
@@ -109,4 +117,23 @@ export async function getAvailableAccounts(): Promise<string[]> {
     console.error("[v0] Error fetching accounts:", error)
     return []
   }
+}
+
+export async function getTaxYears(): Promise<number[]> {
+  const userId = await getCurrentUserId()
+  return await runConvexQuery<{ userId: string }, number[]>("dashboard:getTaxYears", { userId })
+}
+
+export async function getTaxTransactions(year: number | null): Promise<TaxTransaction[]> {
+  const userId = await getCurrentUserId()
+  return await runConvexQuery<{ userId: string; year: number | null }, TaxTransaction[]>("dashboard:getTaxTransactions", {
+    userId,
+    year,
+  })
+}
+
+export async function getTaxDiagnostics(): Promise<TaxDiagnostics> {
+  const userId = await getCurrentUserId()
+
+  return await runConvexQuery<{ userId: string }, TaxDiagnostics>("dashboard:getTaxDiagnostics", { userId })
 }

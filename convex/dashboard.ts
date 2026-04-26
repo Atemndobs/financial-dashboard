@@ -358,6 +358,94 @@ export const getAvailableYears = query({
   },
 })
 
+export const getTaxYears = query({
+  args: {
+    userId: v.string(),
+  },
+  handler: async (ctx, args) => {
+    const transactions = await ctx.db
+      .query("fin_transactions")
+      .withIndex("by_user_id", (q) => q.eq("user_id", args.userId))
+      .collect()
+
+    return Array.from(
+      new Set(
+        transactions
+          .filter((transaction) => !transaction.user_excluded)
+          .map((transaction) => transaction.year),
+      ),
+    ).sort((a, b) => b - a)
+  },
+})
+
+export const getTaxTransactions = query({
+  args: {
+    userId: v.string(),
+    year: v.union(v.number(), v.null()),
+  },
+  handler: async (ctx, args) => {
+    const transactions = await ctx.db
+      .query("fin_transactions")
+      .withIndex("by_user_id", (q) => q.eq("user_id", args.userId))
+      .collect()
+
+    return transactions
+      .filter((transaction) => !transaction.user_excluded && (args.year === null || transaction.year === args.year))
+      .map((transaction) => ({
+        transaction_id: transaction.transaction_id,
+        date: transaction.date,
+        account: transaction.account,
+        counterparty: transaction.counterparty,
+        description: transaction.description,
+        amount: transaction.amount,
+        currency: transaction.currency,
+        category: transaction.category,
+        sub_category: transaction.sub_category,
+        type: normalizeType(transaction),
+        source: transaction.source,
+        year: transaction.year,
+        month: transaction.month,
+        month_label: transaction.month_label,
+        exclude_from_spending: transaction.exclude_from_spending,
+        user_excluded: transaction.user_excluded,
+      }))
+  },
+})
+
+export const getTaxDiagnostics = query({
+  args: {
+    userId: v.string(),
+  },
+  handler: async (ctx, args) => {
+    const transactions = await ctx.db
+      .query("fin_transactions")
+      .withIndex("by_user_id", (q) => q.eq("user_id", args.userId))
+      .collect()
+
+    const taxYears = Array.from(
+      new Set(
+        transactions
+          .filter((transaction) => !transaction.user_excluded)
+          .map((transaction) => transaction.year),
+      ),
+    ).sort((a, b) => b - a)
+
+    const latestTransactionDate = transactions.reduce<string | null>((latest, transaction) => {
+      if (!latest) {
+        return transaction.date
+      }
+      return transaction.date > latest ? transaction.date : latest
+    }, null)
+
+    return {
+      user_id: args.userId,
+      transaction_count: transactions.length,
+      tax_years: taxYears,
+      latest_transaction_date: latestTransactionDate,
+    }
+  },
+})
+
 export const getAvailableAccounts = query({
   args: {
     userId: v.string(),

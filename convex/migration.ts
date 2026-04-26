@@ -89,8 +89,11 @@ export const upsertTransactionsBatch = mutation({
     for (const item of args.items) {
       const existing = await ctx.db
         .query("fin_transactions")
-        .withIndex("by_user_id", (q) => q.eq("user_id", args.userId))
-        .filter((q) => q.eq(q.field("transaction_id"), item.transaction_id))
+        .withIndex("by_user_and_transaction", (q: any) =>
+          q
+            .eq("user_id", args.userId)
+            .eq("transaction_id", item.transaction_id),
+        )
         .unique()
 
       const txDate = new Date(item.date)
@@ -153,8 +156,11 @@ export const upsertExclusionsBatch = mutation({
     for (const item of args.items) {
       const existing = await ctx.db
         .query("fin_exclusions")
-        .withIndex("by_user_id", (q) => q.eq("user_id", args.userId))
-        .filter((q) => q.eq(q.field("transaction_id"), item.transaction_id))
+        .withIndex("by_user_and_transaction", (q: any) =>
+          q
+            .eq("user_id", args.userId)
+            .eq("transaction_id", item.transaction_id),
+        )
         .unique()
 
       const payload = {

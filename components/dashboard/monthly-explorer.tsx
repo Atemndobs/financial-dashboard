@@ -4,17 +4,19 @@ import { useState } from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area"
-import { Bar, BarChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts"
-import type { MonthlyStats, CategoryStats } from "@/lib/types"
-import { formatCurrency, formatPercent, getMonthName } from "@/lib/utils/format"
+import { Bar, BarChart, Cell, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts"
+import type { MonthlyStats, CategoryStats, SupportedCurrency } from "@/lib/types"
+import { convertAmount, formatCurrency, formatPercent, getMonthName } from "@/lib/utils/format"
+import { getCategoryColor, getCategoryIcon } from "@/lib/constants/category-visuals"
 import { cn } from "@/lib/utils"
 
 interface MonthlyExplorerProps {
   monthlyStats: MonthlyStats[]
   categoryStats: CategoryStats[]
+  displayCurrency: SupportedCurrency
 }
 
-export function MonthlyExplorer({ monthlyStats, categoryStats }: MonthlyExplorerProps) {
+export function MonthlyExplorer({ monthlyStats, categoryStats, displayCurrency }: MonthlyExplorerProps) {
   const [selectedMonth, setSelectedMonth] = useState<string | null>(
     monthlyStats.length > 0 ? monthlyStats[0].month_label : null,
   )
@@ -35,6 +37,15 @@ export function MonthlyExplorer({ monthlyStats, categoryStats }: MonthlyExplorer
 
   const selectedMonthData = monthlyStats.find((m) => m.month_label === selectedMonth)
   const selectedMonthCategories = categoryStats.filter((c) => c.month_label === selectedMonth && c.type === "expense")
+  const selectedMonthCategoriesWithVisuals = [...selectedMonthCategories]
+    .sort((a, b) => b.total_amount - a.total_amount)
+    .map((category) => ({
+      ...category,
+      displayTotal: convertAmount(category.total_amount, displayCurrency),
+      displayAvg: convertAmount(category.avg_amount, displayCurrency),
+      resolvedColor: getCategoryColor(category.category, category.category_color),
+      resolvedIcon: getCategoryIcon(category.category, category.category_icon),
+    }))
 
   return (
     <Card>
@@ -63,7 +74,7 @@ export function MonthlyExplorer({ monthlyStats, categoryStats }: MonthlyExplorer
                     {getMonthName(month.month)} {month.year}
                   </span>
                   <span className={cn("text-xs", isSelected ? "text-primary-foreground/80" : "text-muted-foreground")}>
-                    {formatCurrency(month.total_expense)}
+                    {formatCurrency(month.total_expense, displayCurrency)}
                   </span>
                 </button>
               )
@@ -79,19 +90,19 @@ export function MonthlyExplorer({ monthlyStats, categoryStats }: MonthlyExplorer
             <div className="grid gap-4 md:grid-cols-4">
               <div className="flex flex-col gap-1 p-4 rounded-lg bg-gradient-to-br from-emerald-50 to-emerald-100 dark:from-emerald-950 dark:to-emerald-900">
                 <span className="text-sm text-muted-foreground">Income</span>
-                <span className="text-2xl font-bold">{formatCurrency(selectedMonthData.total_income)}</span>
+                <span className="text-2xl font-bold">{formatCurrency(selectedMonthData.total_income, displayCurrency)}</span>
                 <span className="text-xs text-muted-foreground">{selectedMonthData.income_count} transactions</span>
               </div>
 
               <div className="flex flex-col gap-1 p-4 rounded-lg bg-gradient-to-br from-rose-50 to-rose-100 dark:from-rose-950 dark:to-rose-900">
                 <span className="text-sm text-muted-foreground">Expenses</span>
-                <span className="text-2xl font-bold">{formatCurrency(selectedMonthData.total_expense)}</span>
+                <span className="text-2xl font-bold">{formatCurrency(selectedMonthData.total_expense, displayCurrency)}</span>
                 <span className="text-xs text-muted-foreground">{selectedMonthData.expense_count} transactions</span>
               </div>
 
               <div className="flex flex-col gap-1 p-4 rounded-lg bg-gradient-to-br from-blue-50 to-blue-100 dark:from-blue-950 dark:to-blue-900">
                 <span className="text-sm text-muted-foreground">Net</span>
-                <span className="text-2xl font-bold">{formatCurrency(selectedMonthData.net)}</span>
+                <span className="text-2xl font-bold">{formatCurrency(selectedMonthData.net, displayCurrency)}</span>
                 <span className="text-xs text-muted-foreground">
                   {selectedMonthData.net > 0 ? "Surplus" : "Deficit"}
                 </span>
@@ -105,14 +116,14 @@ export function MonthlyExplorer({ monthlyStats, categoryStats }: MonthlyExplorer
             </div>
 
             {/* Category Breakdown */}
-            {selectedMonthCategories.length > 0 && (
+            {selectedMonthCategoriesWithVisuals.length > 0 && (
               <div className="space-y-4">
                 <h3 className="text-lg font-semibold">Category Breakdown</h3>
 
                 {/* Category Chart */}
                 <div className="h-[300px]">
                   <ResponsiveContainer width="100%" height="100%">
-                    <BarChart data={selectedMonthCategories.slice(0, 10)}>
+                    <BarChart data={selectedMonthCategoriesWithVisuals.slice(0, 10)}>
                       <XAxis
                         dataKey="category"
                         className="text-xs"
@@ -132,7 +143,9 @@ export function MonthlyExplorer({ monthlyStats, categoryStats }: MonthlyExplorer
                             return (
                               <div className="rounded-lg border bg-background p-3 shadow-md">
                                 <p className="text-sm font-medium mb-1">{payload[0].payload.category}</p>
-                                <p className="text-sm">{formatCurrency(payload[0].value as number)}</p>
+                                <p className="text-sm">
+                                  {formatCurrency(payload[0].payload.displayTotal, displayCurrency, displayCurrency)}
+                                </p>
                                 <p className="text-xs text-muted-foreground">
                                   {payload[0].payload.transaction_count} transactions
                                 </p>
@@ -142,31 +155,42 @@ export function MonthlyExplorer({ monthlyStats, categoryStats }: MonthlyExplorer
                           return null
                         }}
                       />
-                      <Bar dataKey="total_amount" radius={[4, 4, 0, 0]} fill="hsl(var(--primary))" />
+                      <Bar dataKey="displayTotal" radius={[4, 4, 0, 0]}>
+                        {selectedMonthCategoriesWithVisuals.slice(0, 10).map((entry, index) => (
+                          <Cell key={`cell-${index}`} fill={entry.resolvedColor} />
+                        ))}
+                      </Bar>
                     </BarChart>
                   </ResponsiveContainer>
                 </div>
 
                 {/* Category List */}
                 <div className="grid gap-2">
-                  {selectedMonthCategories.slice(0, 10).map((category) => (
+                  {selectedMonthCategoriesWithVisuals.slice(0, 10).map((category) => (
                     <div
                       key={category.category}
                       className="flex items-center justify-between p-3 rounded-lg border bg-card hover:bg-accent transition-colors"
                     >
                       <div className="flex items-center gap-3">
                         <div
-                          className="h-4 w-4 rounded-full"
-                          style={{ backgroundColor: category.category_color || "#94a3b8" }}
+                          className="h-6 w-6 rounded-full flex items-center justify-center text-xs"
+                          style={{ backgroundColor: category.resolvedColor }}
                         />
                         <div>
-                          <p className="font-medium">{category.category}</p>
+                          <p className="font-medium">
+                            <span className="mr-2">{category.resolvedIcon}</span>
+                            {category.category}
+                          </p>
                           <p className="text-xs text-muted-foreground">{category.transaction_count} transactions</p>
                         </div>
                       </div>
                       <div className="text-right">
-                        <p className="font-semibold">{formatCurrency(category.total_amount)}</p>
-                        <p className="text-xs text-muted-foreground">Avg: {formatCurrency(category.avg_amount)}</p>
+                        <p className="font-semibold">
+                          {formatCurrency(category.displayTotal, displayCurrency, displayCurrency)}
+                        </p>
+                        <p className="text-xs text-muted-foreground">
+                          Avg: {formatCurrency(category.displayAvg, displayCurrency, displayCurrency)}
+                        </p>
                       </div>
                     </div>
                   ))}
@@ -178,14 +202,14 @@ export function MonthlyExplorer({ monthlyStats, categoryStats }: MonthlyExplorer
             <div className="space-y-2">
               <h3 className="text-lg font-semibold">Highlights</h3>
               <div className="flex flex-wrap gap-2">
-                {selectedMonthCategories.length > 0 && (
+                {selectedMonthCategoriesWithVisuals.length > 0 && (
                   <>
                     <Badge variant="outline" className="text-sm">
-                      Biggest expense: {selectedMonthCategories[0].category} (
-                      {formatCurrency(selectedMonthCategories[0].total_amount)})
+                      Biggest expense: {selectedMonthCategoriesWithVisuals[0].category} (
+                      {formatCurrency(selectedMonthCategoriesWithVisuals[0].displayTotal, displayCurrency, displayCurrency)})
                     </Badge>
                     <Badge variant="outline" className="text-sm">
-                      {selectedMonthCategories.length} expense categories
+                      {selectedMonthCategoriesWithVisuals.length} expense categories
                     </Badge>
                     {selectedMonthData.savings_rate > 20 && (
                       <Badge variant="default" className="text-sm bg-emerald-500">

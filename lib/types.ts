@@ -21,6 +21,8 @@ export interface Transaction {
   category_icon?: string
 }
 
+export type SupportedCurrency = "CHF" | "EUR" | "USD"
+
 export interface Category {
   id: string
   name: string
