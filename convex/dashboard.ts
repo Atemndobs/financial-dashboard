@@ -107,6 +107,7 @@ export const getYearlySummary = query({
         _expense_samples: 0,
         _accounts: new Set<string>(),
         _categories: new Set<string>(),
+        _months: new Set<number>(),
       }
 
       if (transaction.amount >= 0) {
@@ -121,6 +122,7 @@ export const getYearlySummary = query({
       existing.transaction_count += 1
       existing._accounts.add(transaction.account)
       existing._categories.add(transaction.category)
+      existing._months.add(transaction.month)
       grouped.set(transaction.year, existing)
     }
 
@@ -134,8 +136,8 @@ export const getYearlySummary = query({
         transaction_count: summary.transaction_count,
         account_count: summary._accounts.size,
         category_count: summary._categories.size,
-        avg_monthly_income: summary._income_samples > 0 ? summary.total_income / summary._income_samples : 0,
-        avg_monthly_expense: summary._expense_samples > 0 ? summary.total_expense / summary._expense_samples : 0,
+        avg_monthly_income: summary._months.size > 0 ? summary.total_income / summary._months.size : 0,
+        avg_monthly_expense: summary._months.size > 0 ? summary.total_expense / summary._months.size : 0,
       }))
       .sort((a, b) => b.year - a.year)
   },
