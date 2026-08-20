@@ -62,18 +62,22 @@ export function MonthlyExplorer({ monthlyStats, categoryStats, displayCurrency }
               return (
                 <button
                   key={month.month_label}
+                  aria-pressed={isSelected}
                   onClick={() => setSelectedMonth(month.month_label)}
                   className={cn(
-                    "flex flex-col items-center gap-1 px-4 py-3 rounded-lg border transition-all min-w-[120px]",
+                    "flex flex-col items-center gap-1 px-4 py-3 rounded-lg border-2 transition-all min-w-[120px]",
                     isSelected
-                      ? "bg-primary text-primary-foreground border-primary shadow-md"
-                      : "bg-card hover:bg-accent hover:border-accent-foreground/20",
+                      ? "bg-primary text-primary-foreground border-primary shadow-lg ring-2 ring-primary ring-offset-2 ring-offset-background scale-[1.03]"
+                      : "bg-card border-border hover:bg-accent hover:border-accent-foreground/20",
                   )}
                 >
                   <span className="text-sm font-medium">
                     {getMonthName(month.month)} {month.year}
                   </span>
-                  <span className={cn("text-xs", isSelected ? "text-primary-foreground/80" : "text-muted-foreground")}>
+                  <span className={cn("text-[10px] uppercase tracking-wide", isSelected ? "text-primary-foreground/70" : "text-muted-foreground/70")}>
+                    Spent
+                  </span>
+                  <span className={cn("text-xs font-semibold", isSelected ? "text-primary-foreground" : "text-foreground")}>
                     {formatCurrency(month.total_expense, displayCurrency)}
                   </span>
                 </button>

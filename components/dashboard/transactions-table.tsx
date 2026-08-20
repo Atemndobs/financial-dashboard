@@ -26,6 +26,19 @@ export function TransactionsTable({ initialTransactions, displayCurrency }: Tran
   const [isToggling, setIsToggling] = useState<string | null>(null)
   const [currentPage, setCurrentPage] = useState(1)
   const [itemsPerPage, setItemsPerPage] = useState(25)
+  const [expandedRows, setExpandedRows] = useState<Set<string>>(new Set())
+
+  const toggleRowExpanded = (id: string) => {
+    setExpandedRows((prev) => {
+      const next = new Set(prev)
+      if (next.has(id)) {
+        next.delete(id)
+      } else {
+        next.add(id)
+      }
+      return next
+    })
+  }
 
   // Get unique categories
   const categories = Array.from(new Set(transactions.map((t) => t.category))).sort()
@@ -167,23 +180,46 @@ export function TransactionsTable({ initialTransactions, displayCurrency }: Tran
                 paginatedTransactions.map((transaction) => (
                   <TableRow key={transaction.id} className={cn(transaction.user_excluded && "opacity-50 bg-muted/30")}>
                     <TableCell className="font-medium whitespace-nowrap">{formatDate(transaction.date)}</TableCell>
-                    <TableCell className="max-w-[400px]">
-                      <div className="flex flex-col gap-1">
-                        <span
-                          className="font-medium truncate cursor-help"
-                          title={transaction.description || ""}
-                        >
-                          {transaction.description || "—"}
-                        </span>
-                        {transaction.counterparty && (
-                          <span
-                            className="text-xs text-muted-foreground truncate cursor-help"
-                            title={transaction.counterparty}
+                    <TableCell className="max-w-[400px] align-top">
+                      {(() => {
+                        const isExpanded = expandedRows.has(transaction.id)
+                        return (
+                          <button
+                            type="button"
+                            onClick={() => toggleRowExpanded(transaction.id)}
+                            aria-expanded={isExpanded}
+                            title={isExpanded ? "Click to collapse" : "Click to expand"}
+                            className="flex flex-col gap-1 text-left w-full group"
                           >
-                            {transaction.counterparty}
-                          </span>
-                        )}
-                      </div>
+                            <span className="flex items-start gap-1">
+                              <ChevronRight
+                                className={cn(
+                                  "h-3.5 w-3.5 mt-0.5 flex-shrink-0 text-muted-foreground transition-transform",
+                                  isExpanded && "rotate-90",
+                                )}
+                              />
+                              <span
+                                className={cn(
+                                  "font-medium min-w-0 group-hover:text-foreground",
+                                  isExpanded ? "whitespace-normal break-words" : "truncate",
+                                )}
+                              >
+                                {transaction.description || "—"}
+                              </span>
+                            </span>
+                            {transaction.counterparty && (
+                              <span
+                                className={cn(
+                                  "text-xs text-muted-foreground pl-[18px]",
+                                  isExpanded ? "whitespace-normal break-words" : "truncate",
+                                )}
+                              >
+                                {transaction.counterparty}
+                              </span>
+                            )}
+                          </button>
+                        )
+                      })()}
                     </TableCell>
                     <TableCell className="max-w-[150px]">
                       <div className="flex items-center gap-2">
