@@ -160,13 +160,13 @@ export function TransactionsTable({ initialTransactions, displayCurrency }: Tran
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead className="w-[110px]">Date</TableHead>
-                <TableHead className="min-w-[200px] max-w-[400px]">Description</TableHead>
-                <TableHead className="w-[150px]">Category</TableHead>
-                <TableHead className="w-[130px]">Account</TableHead>
-                <TableHead className="w-[120px] text-right">Amount</TableHead>
-                <TableHead className="w-[100px] text-center">Status</TableHead>
-                <TableHead className="w-[80px] text-center">Actions</TableHead>
+                <TableHead className="w-[70px] md:w-[110px]">Date</TableHead>
+                <TableHead className="max-w-[90px] md:min-w-[200px] md:max-w-[400px]">Description</TableHead>
+                <TableHead className="w-[44px] md:w-[150px]">Category</TableHead>
+                <TableHead className="hidden md:table-cell w-[130px]">Account</TableHead>
+                <TableHead className="w-[90px] md:w-[120px] text-right">Amount</TableHead>
+                <TableHead className="hidden md:table-cell w-[100px] text-center">Status</TableHead>
+                <TableHead className="w-[48px] md:w-[80px] text-center">Actions</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -179,8 +179,8 @@ export function TransactionsTable({ initialTransactions, displayCurrency }: Tran
               ) : (
                 paginatedTransactions.map((transaction) => (
                   <TableRow key={transaction.id} className={cn(transaction.user_excluded && "opacity-50 bg-muted/30")}>
-                    <TableCell className="font-medium whitespace-nowrap">{formatDate(transaction.date)}</TableCell>
-                    <TableCell className="max-w-[400px] align-top">
+                    <TableCell className="font-medium whitespace-nowrap text-xs md:text-sm">{formatDate(transaction.date)}</TableCell>
+                    <TableCell className="max-w-[90px] md:max-w-[400px] align-top">
                       {(() => {
                         const isExpanded = expandedRows.has(transaction.id)
                         return (
@@ -221,26 +221,26 @@ export function TransactionsTable({ initialTransactions, displayCurrency }: Tran
                         )
                       })()}
                     </TableCell>
-                    <TableCell className="max-w-[150px]">
-                      <div className="flex items-center gap-2">
+                    <TableCell className="w-[44px] md:max-w-[150px]">
+                      <div className="flex items-center gap-2" title={transaction.category}>
                         <div
-                          className="h-3 w-3 rounded-full flex-shrink-0"
+                          className="h-3 w-3 rounded-full flex-shrink-0 hidden md:block"
                           style={{ backgroundColor: getCategoryColor(transaction.category, transaction.category_color) }}
                         />
                         <span>{getCategoryIcon(transaction.category, transaction.category_icon)}</span>
-                        <span className="text-sm truncate cursor-help" title={transaction.category}>
+                        <span className="text-sm truncate cursor-help hidden md:inline">
                           {transaction.category}
                         </span>
                       </div>
                     </TableCell>
-                    <TableCell className="text-sm text-muted-foreground max-w-[130px]">
+                    <TableCell className="hidden md:table-cell text-sm text-muted-foreground max-w-[130px]">
                       <span className="truncate cursor-help block" title={transaction.account}>
                         {transaction.account}
                       </span>
                     </TableCell>
                     <TableCell
                       className={cn(
-                        "text-right font-semibold",
+                        "text-right font-semibold whitespace-nowrap text-xs md:text-sm",
                         transaction.amount >= 0
                           ? "text-emerald-600 dark:text-emerald-400"
                           : "text-rose-600 dark:text-rose-400",
@@ -260,7 +260,7 @@ export function TransactionsTable({ initialTransactions, displayCurrency }: Tran
                         )
                       })()}
                     </TableCell>
-                    <TableCell className="text-center">
+                    <TableCell className="hidden md:table-cell text-center">
                       {transaction.user_excluded ? (
                         <Badge variant="secondary" className="text-xs">
                           Excluded
