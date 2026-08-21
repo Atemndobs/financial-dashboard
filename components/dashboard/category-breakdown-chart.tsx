@@ -3,7 +3,6 @@
 import { useState } from "react"
 import type { LucideIcon } from "lucide-react"
 import {
-  XIcon,
   Home,
   KeyRound,
   TrendingUp,
@@ -40,9 +39,10 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Bar, BarChart, Cell, Pie, PieChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts"
 import type { CategoryStats, Transaction, SupportedCurrency } from "@/lib/types"
-import { convertAmount, formatCurrency, formatDate } from "@/lib/utils/format"
+import { convertAmount, formatCurrency } from "@/lib/utils/format"
 import { getCategoryColor, getCategoryIcon } from "@/lib/constants/category-visuals"
 import { cn } from "@/lib/utils"
+import { CategoryDetailDialog } from "@/components/dashboard/category-detail-dialog"
 
 const RADIAN = Math.PI / 180
 
@@ -258,69 +258,10 @@ export function CategoryBreakdownChart({ data, transactions = [], displayCurrenc
         .sort((a, b) => Math.abs(b.displayAmount) - Math.abs(a.displayAmount))
     : []
 
-  const detailCard = pinnedRow ? (
-    <div className="rounded-xl border-2 bg-white dark:bg-slate-900 shadow-xl overflow-hidden">
-      <div
-        className="flex items-start justify-between gap-4 p-4 border-b"
-        style={{ backgroundColor: `${pinnedRow.category_color}1a` }}
-      >
-        <div className="flex items-center gap-3">
-          <div
-            className="h-11 w-11 rounded-full flex items-center justify-center text-xl"
-            style={{ backgroundColor: `${pinnedRow.category_color}33` }}
-          >
-            {pinnedRow.category_icon}
-          </div>
-          <div>
-            <p className="text-xl font-bold leading-tight">{pinnedRow.category}</p>
-            <p className="text-xs text-muted-foreground">
-              {pinnedRow.transaction_count} transactions
-              {pinnedTotalBase > 0
-                ? ` · ${((pinnedRow.display_amount / pinnedTotalBase) * 100).toFixed(0)}% of ${pinnedRow.type}`
-                : ""}
-            </p>
-          </div>
-        </div>
-        <div className="flex items-start gap-3">
-          <p className="text-2xl font-bold tabular-nums">
-            {formatCurrency(pinnedRow.display_amount, displayCurrency, displayCurrency)}
-          </p>
-          <button
-            type="button"
-            onClick={() => setPinnedCategory(null)}
-            aria-label="Close details"
-            className="rounded-md p-1 hover:bg-accent text-muted-foreground"
-          >
-            <XIcon className="h-5 w-5" />
-          </button>
-        </div>
-      </div>
-      <div className="max-h-[320px] overflow-y-auto divide-y">
-        {pinnedTransactions.length === 0 ? (
-          <p className="p-4 text-sm text-muted-foreground">
-            No individual transactions available for this category in the current view.
-          </p>
-        ) : (
-          pinnedTransactions.map((t) => (
-            <div key={t.id} className="flex items-center justify-between gap-4 px-4 py-2.5 hover:bg-accent/50">
-              <div className="min-w-0">
-                <p className="text-sm font-medium truncate">{t.description || t.counterparty || "—"}</p>
-                <p className="text-xs text-muted-foreground">{formatDate(t.date)}</p>
-              </div>
-              <span
-                className={cn(
-                  "text-sm font-semibold tabular-nums whitespace-nowrap",
-                  t.displayAmount >= 0 ? "text-emerald-600 dark:text-emerald-400" : "text-rose-600 dark:text-rose-400",
-                )}
-              >
-                {formatCurrency(t.displayAmount, displayCurrency, displayCurrency)}
-              </span>
-            </div>
-          ))
-        )}
-      </div>
-    </div>
-  ) : null
+  const pinnedShareText =
+    pinnedRow && pinnedTotalBase > 0
+      ? `${((pinnedRow.display_amount / pinnedTotalBase) * 100).toFixed(0)}% of ${pinnedRow.type}`
+      : undefined
 
   return (
     <Card>
@@ -435,8 +376,6 @@ export function CategoryBreakdownChart({ data, transactions = [], displayCurrenc
               </div>
             </div>
 
-            {pinnedRow && pinnedRow.type !== "income" ? detailCard : null}
-
             <div className="grid gap-2">
               {expenseData.map((item) => (
                 <button
@@ -511,10 +450,21 @@ export function CategoryBreakdownChart({ data, transactions = [], displayCurrenc
                 </BarChart>
               </ResponsiveContainer>
             </div>
-
-            {pinnedRow?.type === "income" ? detailCard : null}
           </TabsContent>
         </Tabs>
+
+        <CategoryDetailDialog
+          open={!!pinnedRow}
+          onOpenChange={(open) => !open && setPinnedCategory(null)}
+          category={pinnedRow?.category ?? null}
+          icon={pinnedRow?.category_icon ?? ""}
+          color={pinnedRow?.category_color ?? "#888888"}
+          total={pinnedRow?.display_amount ?? 0}
+          displayCurrency={displayCurrency}
+          transactionCount={pinnedRow?.transaction_count ?? 0}
+          shareText={pinnedShareText}
+          transactions={pinnedTransactions}
+        />
       </CardContent>
     </Card>
   )
