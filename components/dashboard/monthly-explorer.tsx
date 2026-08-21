@@ -6,10 +6,10 @@ import { Badge } from "@/components/ui/badge"
 import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area"
 import { Bar, BarChart, Cell, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts"
 import type { MonthlyStats, CategoryStats, Transaction, SupportedCurrency } from "@/lib/types"
-import { convertAmount, formatCurrency, formatDate, formatPercent, getMonthName } from "@/lib/utils/format"
+import { convertAmount, formatCurrency, formatPercent, getMonthName } from "@/lib/utils/format"
 import { getCategoryColor, getCategoryIcon } from "@/lib/constants/category-visuals"
 import { cn } from "@/lib/utils"
-import { XIcon } from "lucide-react"
+import { CategoryDetailDialog } from "@/components/dashboard/category-detail-dialog"
 
 interface MonthlyExplorerProps {
   monthlyStats: MonthlyStats[]
@@ -197,78 +197,22 @@ export function MonthlyExplorer({ monthlyStats, categoryStats, transactions = []
                   </ResponsiveContainer>
                 </div>
 
-                {/* Pinned category detail — opens on click, click again (or X) to close */}
-                {pinned && (
-                  <div className="rounded-xl border-2 bg-white dark:bg-slate-900 shadow-xl overflow-hidden">
-                    <div
-                      className="flex items-start justify-between gap-4 p-4 border-b"
-                      style={{ backgroundColor: `${pinned.resolvedColor}1a` }}
-                    >
-                      <div className="flex items-center gap-3">
-                        <div
-                          className="h-11 w-11 rounded-full flex items-center justify-center text-xl"
-                          style={{ backgroundColor: `${pinned.resolvedColor}33` }}
-                        >
-                          {pinned.resolvedIcon}
-                        </div>
-                        <div>
-                          <p className="text-xl font-bold leading-tight">{pinned.category}</p>
-                          <p className="text-xs text-muted-foreground">
-                            {getMonthName(selectedMonthData.month)} {selectedMonthData.year} ·{" "}
-                            {pinned.transaction_count} transactions
-                            {monthExpenseTotal > 0
-                              ? ` · ${((pinned.displayTotal / monthExpenseTotal) * 100).toFixed(0)}% of month`
-                              : ""}
-                          </p>
-                        </div>
-                      </div>
-                      <div className="flex items-start gap-3">
-                        <div className="text-right">
-                          <p className="text-2xl font-bold tabular-nums">
-                            {formatCurrency(pinned.displayTotal, displayCurrency, displayCurrency)}
-                          </p>
-                          <p className="text-xs text-muted-foreground">
-                            Avg {formatCurrency(pinned.displayAvg, displayCurrency, displayCurrency)}
-                          </p>
-                        </div>
-                        <button
-                          type="button"
-                          onClick={() => setPinnedCategory(null)}
-                          aria-label="Close details"
-                          className="rounded-md p-1 hover:bg-accent text-muted-foreground"
-                        >
-                          <XIcon className="h-5 w-5" />
-                        </button>
-                      </div>
-                    </div>
-                    <div className="max-h-[320px] overflow-y-auto divide-y">
-                      {pinnedTransactions.length === 0 ? (
-                        <p className="p-4 text-sm text-muted-foreground">
-                          No individual transactions available for this category in this month.
-                        </p>
-                      ) : (
-                        pinnedTransactions.map((t) => (
-                          <div key={t.id} className="flex items-center justify-between gap-4 px-4 py-2.5 hover:bg-accent/50">
-                            <div className="min-w-0">
-                              <p className="text-sm font-medium truncate">{t.description || t.counterparty || "—"}</p>
-                              <p className="text-xs text-muted-foreground">{formatDate(t.date)}</p>
-                            </div>
-                            <span
-                              className={cn(
-                                "text-sm font-semibold tabular-nums whitespace-nowrap",
-                                t.displayAmount >= 0
-                                  ? "text-emerald-600 dark:text-emerald-400"
-                                  : "text-rose-600 dark:text-rose-400",
-                              )}
-                            >
-                              {formatCurrency(t.displayAmount, displayCurrency, displayCurrency)}
-                            </span>
-                          </div>
-                        ))
-                      )}
-                    </div>
-                  </div>
-                )}
+                <CategoryDetailDialog
+                  open={!!pinned}
+                  onOpenChange={(open) => !open && setPinnedCategory(null)}
+                  category={pinned?.category ?? null}
+                  icon={pinned?.resolvedIcon ?? ""}
+                  color={pinned?.resolvedColor ?? "#888888"}
+                  total={pinned?.displayTotal ?? 0}
+                  displayCurrency={displayCurrency}
+                  transactionCount={pinned?.transaction_count ?? 0}
+                  shareText={
+                    pinned && monthExpenseTotal > 0
+                      ? `${((pinned.displayTotal / monthExpenseTotal) * 100).toFixed(0)}% of month`
+                      : undefined
+                  }
+                  transactions={pinnedTransactions}
+                />
 
                 {/* Category List */}
                 <div className="grid gap-2">
