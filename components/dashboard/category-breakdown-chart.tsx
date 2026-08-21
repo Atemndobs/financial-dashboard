@@ -111,7 +111,7 @@ export function CategoryBreakdownChart({ data, transactions = [], displayCurrenc
     : []
 
   const detailCard = pinnedRow ? (
-    <div className="rounded-xl border bg-card shadow-lg overflow-hidden">
+    <div className="rounded-xl border-2 bg-white dark:bg-slate-900 shadow-xl overflow-hidden">
       <div
         className="flex items-start justify-between gap-4 p-4 border-b"
         style={{ backgroundColor: `${pinnedRow.category_color}1a` }}

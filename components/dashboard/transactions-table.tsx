@@ -307,7 +307,7 @@ export function TransactionsTable({ initialTransactions, displayCurrency }: Tran
         </div>
 
         {/* Sticky page total — reflects only the active (non-hidden) rows on this page */}
-        <div className="sticky bottom-0 z-10 flex items-center justify-between gap-4 rounded-md border bg-background px-4 py-3 shadow-[0_-2px_8px_rgba(0,0,0,0.06)]">
+        <div className="sticky bottom-0 z-20 flex items-center justify-between gap-4 rounded-md border-2 bg-slate-100 dark:bg-slate-800 px-4 py-3 shadow-[0_-2px_10px_rgba(0,0,0,0.12)]">
           <span className="text-sm font-medium text-muted-foreground">
             Page total
             <span className="ml-1 hidden sm:inline">
