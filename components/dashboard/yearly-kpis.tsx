@@ -64,7 +64,7 @@ export function YearlyKPIs({ summary, displayCurrency }: YearlyKPIsProps) {
         />
       </div>
 
-      <div className="grid gap-4 md:grid-cols-3">
+      <div className="grid gap-4 md:grid-cols-2">
         <KPICard
           title="Avg Monthly Income"
           value={summary.avg_monthly_income}
@@ -80,8 +80,6 @@ export function YearlyKPIs({ summary, displayCurrency }: YearlyKPIsProps) {
           subtitle="Average per month"
           currency={displayCurrency}
         />
-
-        <KPICard title="Accounts" value={summary.account_count} subtitle={`${summary.account_count} active accounts`} />
       </div>
     </div>
   )
