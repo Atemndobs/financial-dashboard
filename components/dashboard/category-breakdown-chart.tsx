@@ -1,7 +1,41 @@
 "use client"
 
 import { useState } from "react"
-import { XIcon } from "lucide-react"
+import type { LucideIcon } from "lucide-react"
+import {
+  XIcon,
+  Home,
+  KeyRound,
+  TrendingUp,
+  ShoppingBag,
+  ShoppingCart,
+  Shield,
+  Utensils,
+  Car,
+  Repeat,
+  Baby,
+  Palmtree,
+  Plane,
+  Clapperboard,
+  GraduationCap,
+  Cloud,
+  Landmark,
+  HeartPulse,
+  Sparkles,
+  Gift,
+  Briefcase,
+  Receipt,
+  CreditCard,
+  Cat,
+  Sprout,
+  Smartphone,
+  Zap,
+  Users,
+  Wallet,
+  RotateCcw,
+  ArrowLeftRight,
+  Tag,
+} from "lucide-react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Bar, BarChart, Cell, Pie, PieChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts"
@@ -9,6 +43,120 @@ import type { CategoryStats, Transaction, SupportedCurrency } from "@/lib/types"
 import { convertAmount, formatCurrency, formatDate } from "@/lib/utils/format"
 import { getCategoryColor, getCategoryIcon } from "@/lib/constants/category-visuals"
 import { cn } from "@/lib/utils"
+
+const RADIAN = Math.PI / 180
+
+// Category -> real SVG icon (no emoji). Falls back to a generic tag.
+const CATEGORY_LUCIDE: Record<string, LucideIcon> = {
+  household: Home,
+  rent: KeyRound,
+  housing: Home,
+  "savings & investments": TrendingUp,
+  savings: TrendingUp,
+  shopping: ShoppingBag,
+  groceries: ShoppingCart,
+  insurance: Shield,
+  dining: Utensils,
+  transportation: Car,
+  subscriptions: Repeat,
+  "kids fund": Baby,
+  family: Users,
+  "vacation fund": Palmtree,
+  vacation: Palmtree,
+  travel: Plane,
+  entertainment: Clapperboard,
+  education: GraduationCap,
+  cloud: Cloud,
+  banking: Landmark,
+  healthcare: HeartPulse,
+  "personal care": Sparkles,
+  "gifts & donations": Gift,
+  "professional services": Briefcase,
+  taxes: Receipt,
+  "debt payments": CreditCard,
+  pets: Cat,
+  "home & garden": Sprout,
+  telecom: Smartphone,
+  utilities: Zap,
+  income: Wallet,
+  refund: RotateCcw,
+  transfer: ArrowLeftRight,
+}
+
+function getLucideForCategory(category: string): LucideIcon {
+  return CATEGORY_LUCIDE[category.toLowerCase()] ?? Tag
+}
+
+// Compact money: 1234 -> "1.2k", 3000 -> "3k", 950 -> "950".
+function shortAmount(value: number): string {
+  const n = Math.abs(value)
+  if (n >= 1000) {
+    const k = n / 1000
+    return `${k >= 10 ? Math.round(k) : Number(k.toFixed(1))}k`
+  }
+  return `${Math.round(n)}`
+}
+
+// Big slices get an icon + amount painted inside; tiny slices are extracted
+// with a leader line and labelled just outside the pie.
+function renderExpensePieLabel(props: any) {
+  const { cx, cy, midAngle, outerRadius, percent, value, name, payload } = props
+  if (!value) return null
+  const fill = props.fill ?? payload?.color ?? "#888888"
+  const cos = Math.cos(-midAngle * RADIAN)
+  const sin = Math.sin(-midAngle * RADIAN)
+  const Icon = getLucideForCategory(name)
+  const amount = shortAmount(value)
+  const inside = percent >= 0.06
+
+  if (inside) {
+    const r = outerRadius * 0.62
+    const x = cx + r * cos
+    const y = cy + r * sin
+    return (
+      <g pointerEvents="none">
+        <Icon x={x - 9} y={y - 21} width={18} height={18} color="#ffffff" strokeWidth={2.25} />
+        <text
+          x={x}
+          y={y + 9}
+          textAnchor="middle"
+          fontSize={12}
+          fontWeight={700}
+          fill="#ffffff"
+          stroke="rgba(0,0,0,0.28)"
+          strokeWidth={2.5}
+          paintOrder="stroke"
+        >
+          {amount}
+        </text>
+      </g>
+    )
+  }
+
+  // Small slice: leader line out to a label sitting just outside the arc.
+  const x1 = cx + outerRadius * cos
+  const y1 = cy + outerRadius * sin
+  const x2 = cx + (outerRadius + 12) * cos
+  const y2 = cy + (outerRadius + 12) * sin
+  const right = cos >= 0
+  const x3 = x2 + (right ? 14 : -14)
+  return (
+    <g pointerEvents="none">
+      <polyline points={`${x1},${y1} ${x2},${y2} ${x3},${y2}`} stroke={fill} strokeWidth={1.25} fill="none" />
+      <Icon x={x3 + (right ? 1 : -15)} y={y2 - 15} width={13} height={13} color={fill} strokeWidth={2.25} />
+      <text
+        x={x3 + (right ? 17 : -17)}
+        y={y2 + 4}
+        textAnchor={right ? "start" : "end"}
+        fontSize={11}
+        fontWeight={600}
+        fill={fill}
+      >
+        {amount}
+      </text>
+    </g>
+  )
+}
 
 interface CategoryBreakdownChartProps {
   data: CategoryStats[]
@@ -190,16 +338,16 @@ export function CategoryBreakdownChart({ data, transactions = [], displayCurrenc
           <TabsContent value="expenses" className="space-y-4">
             <div className="grid gap-4 md:grid-cols-2">
               {/* Pie Chart */}
-              <div className="h-[300px]">
+              <div className="h-[360px]">
                 <ResponsiveContainer width="100%" height="100%">
-                  <PieChart>
+                  <PieChart margin={{ top: 24, right: 24, bottom: 24, left: 24 }}>
                     <Pie
                       data={pieChartData}
                       cx="50%"
                       cy="50%"
                       labelLine={false}
-                      label={false}
-                      outerRadius={85}
+                      label={renderExpensePieLabel}
+                      outerRadius="88%"
                       fill="#8884d8"
                       dataKey="value"
                       cursor="pointer"
