@@ -175,9 +175,9 @@ export function TransactionsTable({ initialTransactions, displayCurrency }: Tran
                 <TableHead className="max-w-[90px] md:min-w-[200px] md:max-w-[400px]">Description</TableHead>
                 <TableHead className={categoryHeadClass}>Category</TableHead>
                 <TableHead className="hidden md:table-cell w-[130px]">Account</TableHead>
-                <TableHead className="w-[90px] md:w-[120px] text-right">Amount</TableHead>
+                <TableHead className="w-[96px] md:w-[120px] text-right">Amount</TableHead>
                 <TableHead className="hidden md:table-cell w-[100px] text-center">Status</TableHead>
-                <TableHead className="w-[48px] md:w-[80px] text-center">Actions</TableHead>
+                <TableHead className="hidden md:table-cell w-[80px] text-center">Actions</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -288,7 +288,7 @@ export function TransactionsTable({ initialTransactions, displayCurrency }: Tran
                         </Badge>
                       )}
                     </TableCell>
-                    <TableCell className="text-center">
+                    <TableCell className="hidden md:table-cell text-center">
                       <Button
                         variant="ghost"
                         size="sm"
