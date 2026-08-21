@@ -12,7 +12,8 @@ import type { Transaction, SupportedCurrency } from "@/lib/types"
 import { formatCurrency, formatDate } from "@/lib/utils/format"
 import { toggleTransactionExclusion } from "@/lib/data/actions"
 import { cn } from "@/lib/utils"
-import { getCategoryColor, getCategoryIcon } from "@/lib/constants/category-visuals"
+import { getCategoryColor } from "@/lib/constants/category-visuals"
+import { getCategoryLucideIcon } from "@/lib/constants/category-lucide"
 
 interface TransactionsTableProps {
   initialTransactions: Transaction[]
@@ -232,16 +233,18 @@ export function TransactionsTable({ initialTransactions, displayCurrency }: Tran
                       })()}
                     </TableCell>
                     <TableCell className={categoryCellClass}>
-                      <div className="flex items-center gap-2" title={transaction.category}>
-                        <div
-                          className="h-3 w-3 rounded-full flex-shrink-0 hidden md:block"
-                          style={{ backgroundColor: getCategoryColor(transaction.category, transaction.category_color) }}
-                        />
-                        <span>{getCategoryIcon(transaction.category, transaction.category_icon)}</span>
-                        <span className="text-sm truncate cursor-help hidden md:inline">
-                          {transaction.category}
-                        </span>
-                      </div>
+                      {(() => {
+                        const CatIcon = getCategoryLucideIcon(transaction.category)
+                        const catColor = getCategoryColor(transaction.category, transaction.category_color)
+                        return (
+                          <div className="flex items-center gap-2" title={transaction.category}>
+                            <CatIcon className="h-4 w-4 shrink-0" style={{ color: catColor }} />
+                            <span className="text-sm truncate cursor-help hidden md:inline">
+                              {transaction.category}
+                            </span>
+                          </div>
+                        )
+                      })()}
                     </TableCell>
                     <TableCell className="hidden md:table-cell text-sm text-muted-foreground max-w-[130px]">
                       <span className="truncate cursor-help block" title={transaction.account}>
