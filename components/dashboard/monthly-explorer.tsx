@@ -201,7 +201,6 @@ export function MonthlyExplorer({ monthlyStats, categoryStats, transactions = []
                   open={!!pinned}
                   onOpenChange={(open) => !open && setPinnedCategory(null)}
                   category={pinned?.category ?? null}
-                  icon={pinned?.resolvedIcon ?? ""}
                   color={pinned?.resolvedColor ?? "#888888"}
                   total={pinned?.displayTotal ?? 0}
                   displayCurrency={displayCurrency}
