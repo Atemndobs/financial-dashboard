@@ -1,40 +1,6 @@
 "use client"
 
 import { useState } from "react"
-import type { LucideIcon } from "lucide-react"
-import {
-  Home,
-  KeyRound,
-  TrendingUp,
-  ShoppingBag,
-  ShoppingCart,
-  Shield,
-  Utensils,
-  Car,
-  Repeat,
-  Baby,
-  Palmtree,
-  Plane,
-  Clapperboard,
-  GraduationCap,
-  Cloud,
-  Landmark,
-  HeartPulse,
-  Sparkles,
-  Gift,
-  Briefcase,
-  Receipt,
-  CreditCard,
-  Cat,
-  Sprout,
-  Smartphone,
-  Zap,
-  Users,
-  Wallet,
-  RotateCcw,
-  ArrowLeftRight,
-  Tag,
-} from "lucide-react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Bar, BarChart, Cell, Pie, PieChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts"
@@ -43,49 +9,9 @@ import { convertAmount, formatCurrency } from "@/lib/utils/format"
 import { getCategoryColor, getCategoryIcon } from "@/lib/constants/category-visuals"
 import { cn } from "@/lib/utils"
 import { CategoryDetailDialog } from "@/components/dashboard/category-detail-dialog"
+import { getCategoryLucideIcon } from "@/lib/constants/category-lucide"
 
 const RADIAN = Math.PI / 180
-
-// Category -> real SVG icon (no emoji). Falls back to a generic tag.
-const CATEGORY_LUCIDE: Record<string, LucideIcon> = {
-  household: Home,
-  rent: KeyRound,
-  housing: Home,
-  "savings & investments": TrendingUp,
-  savings: TrendingUp,
-  shopping: ShoppingBag,
-  groceries: ShoppingCart,
-  insurance: Shield,
-  dining: Utensils,
-  transportation: Car,
-  subscriptions: Repeat,
-  "kids fund": Baby,
-  family: Users,
-  "vacation fund": Palmtree,
-  vacation: Palmtree,
-  travel: Plane,
-  entertainment: Clapperboard,
-  education: GraduationCap,
-  cloud: Cloud,
-  banking: Landmark,
-  healthcare: HeartPulse,
-  "personal care": Sparkles,
-  "gifts & donations": Gift,
-  "professional services": Briefcase,
-  taxes: Receipt,
-  "debt payments": CreditCard,
-  pets: Cat,
-  "home & garden": Sprout,
-  telecom: Smartphone,
-  utilities: Zap,
-  income: Wallet,
-  refund: RotateCcw,
-  transfer: ArrowLeftRight,
-}
-
-function getLucideForCategory(category: string): LucideIcon {
-  return CATEGORY_LUCIDE[category.toLowerCase()] ?? Tag
-}
 
 // Compact money: 1234 -> "1.2k", 3000 -> "3k", 950 -> "950".
 function shortAmount(value: number): string {
@@ -105,7 +31,7 @@ function renderExpensePieLabel(props: any) {
   const fill = props.fill ?? payload?.color ?? "#888888"
   const cos = Math.cos(-midAngle * RADIAN)
   const sin = Math.sin(-midAngle * RADIAN)
-  const Icon = getLucideForCategory(name)
+  const Icon = getCategoryLucideIcon(name)
   const amount = shortAmount(value)
   const inside = percent >= 0.06
 
@@ -457,7 +383,6 @@ export function CategoryBreakdownChart({ data, transactions = [], displayCurrenc
           open={!!pinnedRow}
           onOpenChange={(open) => !open && setPinnedCategory(null)}
           category={pinnedRow?.category ?? null}
-          icon={pinnedRow?.category_icon ?? ""}
           color={pinnedRow?.category_color ?? "#888888"}
           total={pinnedRow?.display_amount ?? 0}
           displayCurrency={displayCurrency}
