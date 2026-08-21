@@ -262,7 +262,7 @@ export function MonthlyExplorer({ monthlyStats, categoryStats, transactions = []
               <div className="flex flex-wrap gap-2">
                 {selectedMonthCategoriesWithVisuals.length > 0 && (
                   <>
-                    <Badge variant="outline" className="text-sm">
+                    <Badge variant="outline" className="text-sm max-w-full h-auto whitespace-normal break-words text-left">
                       Biggest expense: {selectedMonthCategoriesWithVisuals[0].category} (
                       {formatCurrency(selectedMonthCategoriesWithVisuals[0].displayTotal, displayCurrency, displayCurrency)})
                     </Badge>

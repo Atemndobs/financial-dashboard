@@ -77,7 +77,7 @@ export function DashboardClient({ availableYears, availableAccounts }: Dashboard
   }, [filters])
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-8 overflow-x-hidden">
       <DashboardHeader
         showFilterToggle={isMobile}
         isFiltersCollapsed={isFiltersCollapsed}

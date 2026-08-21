@@ -254,6 +254,7 @@ export const RULES: CategorizationRule[] = [
       "penny farthing",
       "pizzeria pulverturm",
       "weihnachtsmarkt",
+      "lsp*aha",
     ],
     category: "Dining",
   },
