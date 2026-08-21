@@ -110,6 +110,7 @@ export function DashboardClient({ availableYears, availableAccounts }: Dashboard
           <MonthlyExplorer
             monthlyStats={monthlyStats}
             categoryStats={categoryStats}
+            transactions={transactions}
             displayCurrency={displayCurrency}
           />
 

@@ -100,6 +100,16 @@ export function TransactionsTable({ initialTransactions, displayCurrency }: Tran
   const filteredTotal = filteredTransactions.reduce((sum, t) => sum + t.amount, 0)
   const currentPageTotal = paginatedTransactions.reduce((sum, t) => sum + t.amount, 0)
 
+  // Total of what's actually visible on this page, excluding hidden rows.
+  const activePageTransactions = paginatedTransactions.filter((t) => !t.user_excluded)
+  const activePageTotal = activePageTransactions.reduce((sum, t) => sum + t.amount, 0)
+
+  // When a category filter is active, the Category column is redundant — hide it
+  // on mobile so the meaningful columns fit without horizontal scrolling.
+  const isCategoryFiltered = categoryFilter !== "all"
+  const categoryHeadClass = isCategoryFiltered ? "hidden md:table-cell md:w-[150px]" : "w-[44px] md:w-[150px]"
+  const categoryCellClass = isCategoryFiltered ? "hidden md:table-cell md:max-w-[150px]" : "w-[44px] md:max-w-[150px]"
+
   return (
     <Card>
       <CardHeader>
@@ -162,7 +172,7 @@ export function TransactionsTable({ initialTransactions, displayCurrency }: Tran
               <TableRow>
                 <TableHead className="w-[70px] md:w-[110px]">Date</TableHead>
                 <TableHead className="max-w-[90px] md:min-w-[200px] md:max-w-[400px]">Description</TableHead>
-                <TableHead className="w-[44px] md:w-[150px]">Category</TableHead>
+                <TableHead className={categoryHeadClass}>Category</TableHead>
                 <TableHead className="hidden md:table-cell w-[130px]">Account</TableHead>
                 <TableHead className="w-[90px] md:w-[120px] text-right">Amount</TableHead>
                 <TableHead className="hidden md:table-cell w-[100px] text-center">Status</TableHead>
@@ -221,7 +231,7 @@ export function TransactionsTable({ initialTransactions, displayCurrency }: Tran
                         )
                       })()}
                     </TableCell>
-                    <TableCell className="w-[44px] md:max-w-[150px]">
+                    <TableCell className={categoryCellClass}>
                       <div className="flex items-center gap-2" title={transaction.category}>
                         <div
                           className="h-3 w-3 rounded-full flex-shrink-0 hidden md:block"
@@ -294,6 +304,29 @@ export function TransactionsTable({ initialTransactions, displayCurrency }: Tran
               )}
             </TableBody>
           </Table>
+        </div>
+
+        {/* Sticky page total — reflects only the active (non-hidden) rows on this page */}
+        <div className="sticky bottom-0 z-10 flex items-center justify-between gap-4 rounded-md border bg-background px-4 py-3 shadow-[0_-2px_8px_rgba(0,0,0,0.06)]">
+          <span className="text-sm font-medium text-muted-foreground">
+            Page total
+            <span className="ml-1 hidden sm:inline">
+              ({activePageTransactions.length} active
+              {activePageTransactions.length !== paginatedTransactions.length
+                ? `, ${paginatedTransactions.length - activePageTransactions.length} hidden`
+                : ""}
+              {isCategoryFiltered ? ` · ${categoryFilter}` : ""})
+            </span>
+          </span>
+          <span
+            className={cn(
+              "text-base font-bold tabular-nums",
+              activePageTotal >= 0 ? "text-emerald-600 dark:text-emerald-400" : "text-rose-600 dark:text-rose-400",
+            )}
+          >
+            {activePageTotal >= 0 ? "+" : ""}
+            {formatCurrency(activePageTotal, displayCurrency)}
+          </span>
         </div>
 
         {/* Pagination */}
