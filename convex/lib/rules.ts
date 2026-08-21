@@ -22,6 +22,18 @@ export const DEFAULTS = {
 
 export const RULES: CategorizationRule[] = [
   {
+    // Internal transfers to own PostFinance account — not spending.
+    name: "Internal transfer (own account)",
+    keywords: ["ch8709000000166286941"],
+    category: "Transfer",
+    excludeFromSpending: true,
+  },
+  {
+    name: "Betreibungsamt fee",
+    keywords: ["betreibungsamt"],
+    category: "Taxes",
+  },
+  {
     name: "Groceries",
     keywords: ["rewe", "tesco", "migros", "coop", "lidl", "aldi", "denner"],
     category: "Groceries",
@@ -242,6 +254,7 @@ export const RULES: CategorizationRule[] = [
       "penny farthing",
       "pizzeria pulverturm",
       "weihnachtsmarkt",
+      "munster-fahre",
     ],
     category: "Dining",
   },
