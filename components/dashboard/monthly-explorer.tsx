@@ -8,6 +8,7 @@ import { Bar, BarChart, Cell, ResponsiveContainer, Tooltip, XAxis, YAxis } from 
 import type { MonthlyStats, CategoryStats, Transaction, SupportedCurrency } from "@/lib/types"
 import { convertAmount, formatCurrency, formatPercent, getMonthName } from "@/lib/utils/format"
 import { getCategoryColor, getCategoryIcon } from "@/lib/constants/category-visuals"
+import { getCategoryLucideIcon } from "@/lib/constants/category-lucide"
 import { cn } from "@/lib/utils"
 import { CategoryDetailDialog } from "@/components/dashboard/category-detail-dialog"
 
@@ -215,7 +216,9 @@ export function MonthlyExplorer({ monthlyStats, categoryStats, transactions = []
 
                 {/* Category List */}
                 <div className="grid gap-2">
-                  {selectedMonthCategoriesWithVisuals.slice(0, 10).map((category) => (
+                  {selectedMonthCategoriesWithVisuals.slice(0, 10).map((category) => {
+                    const RowIcon = getCategoryLucideIcon(category.category)
+                    return (
                     <button
                       type="button"
                       key={category.category}
@@ -228,14 +231,13 @@ export function MonthlyExplorer({ monthlyStats, categoryStats, transactions = []
                     >
                       <div className="flex items-center gap-3">
                         <div
-                          className="h-6 w-6 rounded-full flex items-center justify-center text-xs"
+                          className="h-7 w-7 shrink-0 rounded-full flex items-center justify-center"
                           style={{ backgroundColor: category.resolvedColor }}
-                        />
+                        >
+                          <RowIcon className="h-4 w-4 text-white" />
+                        </div>
                         <div>
-                          <p className="font-medium">
-                            <span className="mr-2">{category.resolvedIcon}</span>
-                            {category.category}
-                          </p>
+                          <p className="font-medium">{category.category}</p>
                           <p className="text-xs text-muted-foreground">{category.transaction_count} transactions</p>
                         </div>
                       </div>
@@ -248,7 +250,8 @@ export function MonthlyExplorer({ monthlyStats, categoryStats, transactions = []
                         </p>
                       </div>
                     </button>
-                  ))}
+                    )
+                  })}
                 </div>
               </div>
             )}

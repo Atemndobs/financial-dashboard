@@ -303,7 +303,9 @@ export function CategoryBreakdownChart({ data, transactions = [], displayCurrenc
             </div>
 
             <div className="grid gap-2">
-              {expenseData.map((item) => (
+              {expenseData.map((item) => {
+                const RowIcon = getCategoryLucideIcon(item.category)
+                return (
                 <button
                   type="button"
                   key={item.category}
@@ -316,7 +318,7 @@ export function CategoryBreakdownChart({ data, transactions = [], displayCurrenc
                 >
                   <div className="flex items-center gap-2 text-sm font-medium">
                     <span className="inline-block h-3 w-3 rounded-full" style={{ backgroundColor: item.category_color }} />
-                    <span>{item.category_icon}</span>
+                    <RowIcon className="h-4 w-4 shrink-0" style={{ color: item.category_color }} />
                     <span>{item.category}</span>
                   </div>
                   <div className="text-sm text-muted-foreground">
@@ -324,7 +326,8 @@ export function CategoryBreakdownChart({ data, transactions = [], displayCurrenc
                     {expenseTotal > 0 ? ` • ${((item.display_amount / expenseTotal) * 100).toFixed(0)}%` : ""}
                   </div>
                 </button>
-              ))}
+                )
+              })}
             </div>
           </TabsContent>
 
