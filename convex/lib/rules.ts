@@ -3,7 +3,13 @@
 
 export type CategorizationRule = {
   name: string
+  // Matches if ANY keyword is a substring of the combined text.
   keywords: string[]
+  // If set, EVERY entry must be a substring (AND). Combined with `keywords`,
+  // the rule matches when the ALL-condition holds (keywords is then optional).
+  allKeywords?: string[]
+  // If any of these is present, the rule does NOT match (veto).
+  excludeKeywords?: string[]
   category: string
   excludeFromSpending?: boolean
 }
@@ -88,6 +94,38 @@ export const RULES: CategorizationRule[] = [
     ],
     category: "jna",
   },
+  // Commerzbank standing orders split by fixed EUR amount. These must come
+  // BEFORE the generic Comdirect->Household rule so the amount wins. The EUR
+  // amount + FX marker ("zum kurs") identifies a transfer; excludeKeywords
+  // avoids matching EUR-denominated card purchases ("karten nr").
+  {
+    name: "Commerzbank ETF transfer (EUR 1600)",
+    keywords: [],
+    allKeywords: ["eur 1'600.00", "zum kurs"],
+    excludeKeywords: ["karten nr"],
+    category: "Savings & Investments",
+  },
+  {
+    name: "Commerzbank Kids Fund transfer (EUR 200)",
+    keywords: [],
+    allKeywords: ["eur 200.00", "zum kurs"],
+    excludeKeywords: ["karten nr"],
+    category: "Kids Fund",
+  },
+  {
+    name: "Commerzbank Vacation Fund transfer (EUR 100)",
+    keywords: [],
+    allKeywords: ["eur 100.00", "zum kurs"],
+    excludeKeywords: ["karten nr"],
+    category: "Vacation Fund",
+  },
+  {
+    name: "Commerzbank Household transfer (EUR 800)",
+    keywords: [],
+    allKeywords: ["eur 800.00", "zum kurs"],
+    excludeKeywords: ["karten nr"],
+    category: "Household",
+  },
   {
     name: "Comdirect Household Fund",
     keywords: [
@@ -169,6 +207,51 @@ export const RULES: CategorizationRule[] = [
     category: "Dining",
   },
   {
+    // TWINT peer payments are almost always splitting a bill when eating out.
+    name: "TWINT (eating out)",
+    keywords: ["twint", "an telefon-nr", "von telefon-nr"],
+    category: "Dining",
+  },
+  {
+    name: "Dining local merchants",
+    keywords: [
+      "caffè spettacolo",
+      "caffe spettacolo",
+      "bäckerei kult",
+      "wälchli bäckerei",
+      "verein schwanbar",
+      "kalte lust",
+      "napolicious",
+      "thommen gastrono",
+      "90 grad bar",
+      "walther buvette",
+      "penny farthing",
+      "pizzeria pulverturm",
+      "weihnachtsmarkt",
+    ],
+    category: "Dining",
+  },
+  {
+    name: "Entertainment venues",
+    keywords: ["casino bern", "tuchlaube", "blockparty", "google play"],
+    category: "Entertainment",
+  },
+  {
+    name: "Education (Klubschule)",
+    keywords: ["klubschule"],
+    category: "Education",
+  },
+  {
+    name: "Home & Garden (Jumbo)",
+    keywords: ["jumbo-", "jumbo "],
+    category: "Home & Garden",
+  },
+  {
+    name: "Shopping (Euro Computer)",
+    keywords: ["euro computer"],
+    category: "Shopping",
+  },
+  {
     name: "Transport",
     keywords: [
       "taxi",
@@ -176,6 +259,10 @@ export const RULES: CategorizationRule[] = [
       "uber",
       "db vertrieb",
       "sbb cff ffs",
+      "sbb zugsverkauf",
+      "swiss federal railways",
+      "bahnhofplatz sbb",
+      "bahnhofplatz",
       "ov-chip",
       "mobility",
       "carsharing",
@@ -232,12 +319,21 @@ export function categorize(row: CategorizationInput): {
   const text = `${row.counterparty ?? ""} ${row.description ?? ""}`.toLowerCase()
 
   for (const rule of RULES) {
-    for (const kw of rule.keywords) {
-      if (text.includes(kw.toLowerCase())) {
-        return {
-          category: rule.category || DEFAULTS.unknown,
-          excludeFromSpending: rule.excludeFromSpending ?? false,
-        }
+    if (rule.excludeKeywords?.some((kw) => text.includes(kw.toLowerCase()))) {
+      continue
+    }
+
+    const allMatch =
+      rule.allKeywords !== undefined &&
+      rule.allKeywords.length > 0 &&
+      rule.allKeywords.every((kw) => text.includes(kw.toLowerCase()))
+
+    const anyMatch = rule.keywords.some((kw) => text.includes(kw.toLowerCase()))
+
+    if (allMatch || anyMatch) {
+      return {
+        category: rule.category || DEFAULTS.unknown,
+        excludeFromSpending: rule.excludeFromSpending ?? false,
       }
     }
   }
