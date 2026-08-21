@@ -254,14 +254,18 @@ export const RULES: CategorizationRule[] = [
       "penny farthing",
       "pizzeria pulverturm",
       "weihnachtsmarkt",
-      "munster-fahre",
     ],
     category: "Dining",
   },
   {
     name: "Entertainment venues",
-    keywords: ["casino bern", "tuchlaube", "blockparty", "google play"],
+    keywords: ["casino bern", "tuchlaube", "blockparty", "google play", "munster-fahre", "currency cloud"],
     category: "Entertainment",
+  },
+  {
+    name: "Healthcare (Dr. Risch lab)",
+    keywords: ["risch ag", "dr. risch"],
+    category: "Healthcare",
   },
   {
     name: "Education (Klubschule)",
