@@ -468,6 +468,85 @@ export const getAvailableAccounts = query({
   },
 })
 
+export const ensureCategory = mutation({
+  args: {
+    name: v.string(),
+    type: v.string(),
+    color: v.string(),
+    icon: v.union(v.string(), v.null()),
+  },
+  handler: async (ctx, args) => {
+    const existing = await ctx.db
+      .query("fin_categories")
+      .filter((q) => q.eq(q.field("name"), args.name))
+      .first()
+
+    if (existing) {
+      return { created: false, name: args.name }
+    }
+
+    const all = await ctx.db.query("fin_categories").collect()
+    const maxSort = all.reduce((max, c) => Math.max(max, c.sort_order ?? 0), 0)
+    const now = new Date().toISOString()
+
+    await ctx.db.insert("fin_categories", {
+      name: args.name,
+      type: args.type,
+      description: null,
+      color: args.color,
+      icon: args.icon,
+      is_active: true,
+      sort_order: maxSort + 10,
+      created_at: now,
+      updated_at: now,
+    })
+
+    return { created: true, name: args.name }
+  },
+})
+
+export const bulkSetCategory = mutation({
+  args: {
+    userId: v.string(),
+    updates: v.array(
+      v.object({
+        transactionId: v.string(),
+        category: v.string(),
+      }),
+    ),
+  },
+  handler: async (ctx, args) => {
+    const byId = new Map(args.updates.map((u) => [u.transactionId, u.category]))
+
+    const transactions = await ctx.db
+      .query("fin_transactions")
+      .withIndex("by_user_id", (q) => q.eq("user_id", args.userId))
+      .collect()
+
+    const now = new Date().toISOString()
+    let updated = 0
+    const missing: string[] = []
+
+    for (const transaction of transactions) {
+      const nextCategory = byId.get(transaction.transaction_id)
+      if (nextCategory === undefined) {
+        continue
+      }
+      if (transaction.category !== nextCategory) {
+        await ctx.db.patch(transaction._id, { category: nextCategory, updated_at: now })
+        updated += 1
+      }
+      byId.delete(transaction.transaction_id)
+    }
+
+    for (const id of byId.keys()) {
+      missing.push(id)
+    }
+
+    return { updated, requested: args.updates.length, missing }
+  },
+})
+
 export const toggleTransactionExclusion = mutation({
   args: {
     userId: v.string(),
