@@ -94,6 +94,20 @@ export const RULES: CategorizationRule[] = [
     ],
     category: "jna",
   },
+  // Loan repayments to specific people. Keyed on the recipient (address /
+  // IBAN), which is stable, and placed BEFORE the amount-split rules so the
+  // recipient always wins regardless of amount.
+  {
+    name: "Loan repayment - Anchenmick Esther",
+    keywords: ["pascalkehre"],
+    category: "Loan repayment",
+  },
+  {
+    name: "Loan repayment - Juliane Schlegel",
+    keywords: ["de89120300001068947843", "juliane schlegel"],
+    category: "Loan repayment",
+  },
+
   // Commerzbank standing orders split by fixed EUR amount. These must come
   // BEFORE the generic Comdirect->Household rule so the amount wins. The EUR
   // amount + FX marker ("zum kurs") identifies a transfer; excludeKeywords

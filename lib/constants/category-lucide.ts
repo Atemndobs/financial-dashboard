@@ -30,6 +30,7 @@ import {
   Wallet,
   RotateCcw,
   ArrowLeftRight,
+  HandCoins,
   Tag,
 } from "lucide-react"
 
@@ -68,6 +69,7 @@ const CATEGORY_LUCIDE: Record<string, LucideIcon> = {
   income: Wallet,
   refund: RotateCcw,
   transfer: ArrowLeftRight,
+  "loan repayment": HandCoins,
 }
 
 export function getCategoryLucideIcon(category: string): LucideIcon {
