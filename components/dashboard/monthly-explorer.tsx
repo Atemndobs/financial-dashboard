@@ -5,21 +5,24 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Badge } from "@/components/ui/badge"
 import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area"
 import { Bar, BarChart, Cell, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts"
-import type { MonthlyStats, CategoryStats, SupportedCurrency } from "@/lib/types"
-import { convertAmount, formatCurrency, formatPercent, getMonthName } from "@/lib/utils/format"
+import type { MonthlyStats, CategoryStats, Transaction, SupportedCurrency } from "@/lib/types"
+import { convertAmount, formatCurrency, formatDate, formatPercent, getMonthName } from "@/lib/utils/format"
 import { getCategoryColor, getCategoryIcon } from "@/lib/constants/category-visuals"
 import { cn } from "@/lib/utils"
+import { XIcon } from "lucide-react"
 
 interface MonthlyExplorerProps {
   monthlyStats: MonthlyStats[]
   categoryStats: CategoryStats[]
+  transactions?: Transaction[]
   displayCurrency: SupportedCurrency
 }
 
-export function MonthlyExplorer({ monthlyStats, categoryStats, displayCurrency }: MonthlyExplorerProps) {
+export function MonthlyExplorer({ monthlyStats, categoryStats, transactions = [], displayCurrency }: MonthlyExplorerProps) {
   const [selectedMonth, setSelectedMonth] = useState<string | null>(
     monthlyStats.length > 0 ? monthlyStats[0].month_label : null,
   )
+  const [pinnedCategory, setPinnedCategory] = useState<string | null>(null)
 
   if (!monthlyStats || monthlyStats.length === 0) {
     return (
@@ -46,6 +49,22 @@ export function MonthlyExplorer({ monthlyStats, categoryStats, displayCurrency }
       resolvedColor: getCategoryColor(category.category, category.category_color),
       resolvedIcon: getCategoryIcon(category.category, category.category_icon),
     }))
+
+  const monthExpenseTotal = selectedMonthCategoriesWithVisuals.reduce((sum, c) => sum + c.displayTotal, 0)
+
+  const toggleCategory = (category: string) =>
+    setPinnedCategory((prev) => (prev === category ? null : category))
+
+  // Detail for the pinned category in the selected month.
+  const pinned = pinnedCategory
+    ? selectedMonthCategoriesWithVisuals.find((c) => c.category === pinnedCategory) ?? null
+    : null
+  const pinnedTransactions = pinned
+    ? transactions
+        .filter((t) => t.month_label === selectedMonth && t.category === pinned.category)
+        .map((t) => ({ ...t, displayAmount: convertAmount(t.amount, displayCurrency) }))
+        .sort((a, b) => Math.abs(b.displayAmount) - Math.abs(a.displayAmount))
+    : []
 
   return (
     <Card>
@@ -153,27 +172,116 @@ export function MonthlyExplorer({ monthlyStats, categoryStats, displayCurrency }
                                 <p className="text-xs text-muted-foreground">
                                   {payload[0].payload.transaction_count} transactions
                                 </p>
+                                <p className="text-[11px] text-muted-foreground mt-1">Click to see details</p>
                               </div>
                             )
                           }
                           return null
                         }}
                       />
-                      <Bar dataKey="displayTotal" radius={[4, 4, 0, 0]}>
+                      <Bar
+                        dataKey="displayTotal"
+                        radius={[4, 4, 0, 0]}
+                        cursor="pointer"
+                        onClick={(data: any) => data?.category && toggleCategory(data.category)}
+                      >
                         {selectedMonthCategoriesWithVisuals.slice(0, 10).map((entry, index) => (
-                          <Cell key={`cell-${index}`} fill={entry.resolvedColor} />
+                          <Cell
+                            key={`cell-${index}`}
+                            fill={entry.resolvedColor}
+                            opacity={pinnedCategory && pinnedCategory !== entry.category ? 0.35 : 1}
+                          />
                         ))}
                       </Bar>
                     </BarChart>
                   </ResponsiveContainer>
                 </div>
 
+                {/* Pinned category detail — opens on click, click again (or X) to close */}
+                {pinned && (
+                  <div className="rounded-xl border bg-card shadow-lg overflow-hidden">
+                    <div
+                      className="flex items-start justify-between gap-4 p-4 border-b"
+                      style={{ backgroundColor: `${pinned.resolvedColor}1a` }}
+                    >
+                      <div className="flex items-center gap-3">
+                        <div
+                          className="h-11 w-11 rounded-full flex items-center justify-center text-xl"
+                          style={{ backgroundColor: `${pinned.resolvedColor}33` }}
+                        >
+                          {pinned.resolvedIcon}
+                        </div>
+                        <div>
+                          <p className="text-xl font-bold leading-tight">{pinned.category}</p>
+                          <p className="text-xs text-muted-foreground">
+                            {getMonthName(selectedMonthData.month)} {selectedMonthData.year} ·{" "}
+                            {pinned.transaction_count} transactions
+                            {monthExpenseTotal > 0
+                              ? ` · ${((pinned.displayTotal / monthExpenseTotal) * 100).toFixed(0)}% of month`
+                              : ""}
+                          </p>
+                        </div>
+                      </div>
+                      <div className="flex items-start gap-3">
+                        <div className="text-right">
+                          <p className="text-2xl font-bold tabular-nums">
+                            {formatCurrency(pinned.displayTotal, displayCurrency, displayCurrency)}
+                          </p>
+                          <p className="text-xs text-muted-foreground">
+                            Avg {formatCurrency(pinned.displayAvg, displayCurrency, displayCurrency)}
+                          </p>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => setPinnedCategory(null)}
+                          aria-label="Close details"
+                          className="rounded-md p-1 hover:bg-accent text-muted-foreground"
+                        >
+                          <XIcon className="h-5 w-5" />
+                        </button>
+                      </div>
+                    </div>
+                    <div className="max-h-[320px] overflow-y-auto divide-y">
+                      {pinnedTransactions.length === 0 ? (
+                        <p className="p-4 text-sm text-muted-foreground">
+                          No individual transactions available for this category in this month.
+                        </p>
+                      ) : (
+                        pinnedTransactions.map((t) => (
+                          <div key={t.id} className="flex items-center justify-between gap-4 px-4 py-2.5 hover:bg-accent/50">
+                            <div className="min-w-0">
+                              <p className="text-sm font-medium truncate">{t.description || t.counterparty || "—"}</p>
+                              <p className="text-xs text-muted-foreground">{formatDate(t.date)}</p>
+                            </div>
+                            <span
+                              className={cn(
+                                "text-sm font-semibold tabular-nums whitespace-nowrap",
+                                t.displayAmount >= 0
+                                  ? "text-emerald-600 dark:text-emerald-400"
+                                  : "text-rose-600 dark:text-rose-400",
+                              )}
+                            >
+                              {formatCurrency(t.displayAmount, displayCurrency, displayCurrency)}
+                            </span>
+                          </div>
+                        ))
+                      )}
+                    </div>
+                  </div>
+                )}
+
                 {/* Category List */}
                 <div className="grid gap-2">
                   {selectedMonthCategoriesWithVisuals.slice(0, 10).map((category) => (
-                    <div
+                    <button
+                      type="button"
                       key={category.category}
-                      className="flex items-center justify-between p-3 rounded-lg border bg-card hover:bg-accent transition-colors"
+                      onClick={() => toggleCategory(category.category)}
+                      aria-pressed={pinnedCategory === category.category}
+                      className={cn(
+                        "flex items-center justify-between p-3 rounded-lg border bg-card hover:bg-accent transition-colors text-left w-full",
+                        pinnedCategory === category.category && "ring-2 ring-primary border-primary",
+                      )}
                     >
                       <div className="flex items-center gap-3">
                         <div
@@ -196,7 +304,7 @@ export function MonthlyExplorer({ monthlyStats, categoryStats, displayCurrency }
                           Avg: {formatCurrency(category.displayAvg, displayCurrency, displayCurrency)}
                         </p>
                       </div>
-                    </div>
+                    </button>
                   ))}
                 </div>
               </div>
