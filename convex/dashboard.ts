@@ -547,6 +547,76 @@ export const bulkSetCategory = mutation({
   },
 })
 
+export const splitTransaction = mutation({
+  args: {
+    userId: v.string(),
+    transactionId: v.string(),
+    parts: v.array(
+      v.object({
+        category: v.string(),
+        amount: v.number(),
+      }),
+    ),
+  },
+  handler: async (ctx, args) => {
+    const original = await ctx.db
+      .query("fin_transactions")
+      .withIndex("by_user_id", (q) => q.eq("user_id", args.userId))
+      .filter((q) => q.eq(q.field("transaction_id"), args.transactionId))
+      .unique()
+
+    if (!original) {
+      return { success: false, error: "Transaction not found" }
+    }
+    if (args.parts.length < 2) {
+      return { success: false, error: "Need at least two parts to split" }
+    }
+
+    const now = new Date().toISOString()
+    const [first, ...rest] = args.parts
+
+    // Part 1 replaces the original row.
+    await ctx.db.patch(original._id, {
+      category: first.category,
+      amount: first.amount,
+      abs_amount: Math.abs(first.amount),
+      is_expense: first.amount < 0,
+      updated_at: now,
+    })
+
+    // Remaining parts become new rows copied from the original.
+    let index = 2
+    for (const part of rest) {
+      await ctx.db.insert("fin_transactions", {
+        user_id: original.user_id,
+        transaction_id: `${original.transaction_id}-s${index}`,
+        date: original.date,
+        account: original.account,
+        counterparty: original.counterparty,
+        description: original.description,
+        amount: part.amount,
+        currency: original.currency,
+        type: original.type,
+        category: part.category,
+        sub_category: original.sub_category,
+        source: original.source,
+        year: original.year,
+        month: original.month,
+        month_label: original.month_label,
+        is_expense: part.amount < 0,
+        abs_amount: Math.abs(part.amount),
+        exclude_from_spending: original.exclude_from_spending,
+        user_excluded: original.user_excluded,
+        created_at: now,
+        updated_at: now,
+      })
+      index += 1
+    }
+
+    return { success: true, parts: args.parts.length }
+  },
+})
+
 export const toggleTransactionExclusion = mutation({
   args: {
     userId: v.string(),
