@@ -1,5 +1,5 @@
 import { KPICard } from "./kpi-card"
-import { TrendingUpIcon, TrendingDownIcon, WalletIcon, PiggyBankIcon } from "lucide-react"
+import { TrendingUpIcon, TrendingDownIcon } from "lucide-react"
 import type { YearlySummary, SupportedCurrency } from "@/lib/types"
 
 interface YearlyKPIsProps {
@@ -23,7 +23,7 @@ export function YearlyKPIs({ summary, displayCurrency }: YearlyKPIsProps) {
         <p className="text-muted-foreground">Key financial metrics for {summary.year}</p>
       </div>
 
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+      <div className="grid gap-4 md:grid-cols-2">
         <KPICard
           title="Total Income"
           value={summary.total_income}
@@ -42,25 +42,6 @@ export function YearlyKPIs({ summary, displayCurrency }: YearlyKPIsProps) {
           icon={<TrendingDownIcon className="h-4 w-4" />}
           subtitle={`Across ${summary.category_count} categories`}
           currency={displayCurrency}
-        />
-
-        <KPICard
-          title="Net Savings"
-          value={summary.net_savings}
-          isCurrency
-          variant="savings"
-          icon={<PiggyBankIcon className="h-4 w-4" />}
-          trend={summary.net_savings > 0 ? "up" : summary.net_savings < 0 ? "down" : "neutral"}
-          currency={displayCurrency}
-        />
-
-        <KPICard
-          title="Savings Rate"
-          value={summary.savings_rate}
-          isPercentage
-          variant="default"
-          icon={<WalletIcon className="h-4 w-4" />}
-          subtitle="Of total income"
         />
       </div>
 
