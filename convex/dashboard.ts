@@ -641,6 +641,31 @@ export const splitTransaction = mutation({
   },
 })
 
+export const setExcludeFromSpending = mutation({
+  args: {
+    userId: v.string(),
+    ids: v.array(v.string()),
+    exclude: v.boolean(),
+  },
+  handler: async (ctx, args) => {
+    const idSet = new Set(args.ids)
+    const transactions = await ctx.db
+      .query("fin_transactions")
+      .withIndex("by_user_id", (q) => q.eq("user_id", args.userId))
+      .collect()
+
+    const now = new Date().toISOString()
+    let updated = 0
+    for (const transaction of transactions) {
+      if (!idSet.has(transaction.transaction_id)) continue
+      if (transaction.exclude_from_spending === args.exclude) continue
+      await ctx.db.patch(transaction._id, { exclude_from_spending: args.exclude, updated_at: now })
+      updated += 1
+    }
+    return { updated }
+  },
+})
+
 export const markAsTransfer = mutation({
   args: {
     userId: v.string(),
