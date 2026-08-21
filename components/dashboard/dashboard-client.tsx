@@ -104,7 +104,7 @@ export function DashboardClient({ availableYears, availableAccounts }: Dashboard
 
           <div className="grid gap-6">
             <MonthlyTrendChart data={monthlyStats} displayCurrency={displayCurrency} />
-            <CategoryBreakdownChart data={categoryStats} displayCurrency={displayCurrency} />
+            <CategoryBreakdownChart data={categoryStats} transactions={transactions} displayCurrency={displayCurrency} />
           </div>
 
           <MonthlyExplorer

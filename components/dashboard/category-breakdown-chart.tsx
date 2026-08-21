@@ -1,14 +1,18 @@
 "use client"
 
+import { useState } from "react"
+import { XIcon } from "lucide-react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Bar, BarChart, Cell, Pie, PieChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts"
-import type { CategoryStats, SupportedCurrency } from "@/lib/types"
-import { convertAmount, formatCurrency } from "@/lib/utils/format"
+import type { CategoryStats, Transaction, SupportedCurrency } from "@/lib/types"
+import { convertAmount, formatCurrency, formatDate } from "@/lib/utils/format"
 import { getCategoryColor, getCategoryIcon } from "@/lib/constants/category-visuals"
+import { cn } from "@/lib/utils"
 
 interface CategoryBreakdownChartProps {
   data: CategoryStats[]
+  transactions?: Transaction[]
   displayCurrency: SupportedCurrency
 }
 
@@ -51,7 +55,11 @@ function aggregateByCategory(data: CategoryStats[], type: "income" | "expense"):
   return Array.from(grouped.values()).sort((a, b) => b.total_amount - a.total_amount)
 }
 
-export function CategoryBreakdownChart({ data, displayCurrency }: CategoryBreakdownChartProps) {
+export function CategoryBreakdownChart({ data, transactions = [], displayCurrency }: CategoryBreakdownChartProps) {
+  const [pinnedCategory, setPinnedCategory] = useState<string | null>(null)
+  const toggleCategory = (category: string) =>
+    setPinnedCategory((prev) => (prev === category ? null : category))
+
   if (!data || data.length === 0) {
     return (
       <Card>
@@ -88,6 +96,83 @@ export function CategoryBreakdownChart({ data, displayCurrency }: CategoryBreakd
     transactions: item.transaction_count,
   }))
   const expenseTotal = pieChartData.reduce((sum, item) => sum + item.value, 0)
+  const incomeTotal = incomeData.reduce((sum, item) => sum + item.display_amount, 0)
+
+  // Pinned-category detail (works for both expense and income rows).
+  const pinnedRow = pinnedCategory
+    ? [...expenseData, ...incomeData].find((r) => r.category === pinnedCategory) ?? null
+    : null
+  const pinnedTotalBase = pinnedRow?.type === "income" ? incomeTotal : expenseTotal
+  const pinnedTransactions = pinnedRow
+    ? transactions
+        .filter((t) => t.category === pinnedRow.category)
+        .map((t) => ({ ...t, displayAmount: convertAmount(t.amount, displayCurrency) }))
+        .sort((a, b) => Math.abs(b.displayAmount) - Math.abs(a.displayAmount))
+    : []
+
+  const detailCard = pinnedRow ? (
+    <div className="rounded-xl border bg-card shadow-lg overflow-hidden">
+      <div
+        className="flex items-start justify-between gap-4 p-4 border-b"
+        style={{ backgroundColor: `${pinnedRow.category_color}1a` }}
+      >
+        <div className="flex items-center gap-3">
+          <div
+            className="h-11 w-11 rounded-full flex items-center justify-center text-xl"
+            style={{ backgroundColor: `${pinnedRow.category_color}33` }}
+          >
+            {pinnedRow.category_icon}
+          </div>
+          <div>
+            <p className="text-xl font-bold leading-tight">{pinnedRow.category}</p>
+            <p className="text-xs text-muted-foreground">
+              {pinnedRow.transaction_count} transactions
+              {pinnedTotalBase > 0
+                ? ` · ${((pinnedRow.display_amount / pinnedTotalBase) * 100).toFixed(0)}% of ${pinnedRow.type}`
+                : ""}
+            </p>
+          </div>
+        </div>
+        <div className="flex items-start gap-3">
+          <p className="text-2xl font-bold tabular-nums">
+            {formatCurrency(pinnedRow.display_amount, displayCurrency, displayCurrency)}
+          </p>
+          <button
+            type="button"
+            onClick={() => setPinnedCategory(null)}
+            aria-label="Close details"
+            className="rounded-md p-1 hover:bg-accent text-muted-foreground"
+          >
+            <XIcon className="h-5 w-5" />
+          </button>
+        </div>
+      </div>
+      <div className="max-h-[320px] overflow-y-auto divide-y">
+        {pinnedTransactions.length === 0 ? (
+          <p className="p-4 text-sm text-muted-foreground">
+            No individual transactions available for this category in the current view.
+          </p>
+        ) : (
+          pinnedTransactions.map((t) => (
+            <div key={t.id} className="flex items-center justify-between gap-4 px-4 py-2.5 hover:bg-accent/50">
+              <div className="min-w-0">
+                <p className="text-sm font-medium truncate">{t.description || t.counterparty || "—"}</p>
+                <p className="text-xs text-muted-foreground">{formatDate(t.date)}</p>
+              </div>
+              <span
+                className={cn(
+                  "text-sm font-semibold tabular-nums whitespace-nowrap",
+                  t.displayAmount >= 0 ? "text-emerald-600 dark:text-emerald-400" : "text-rose-600 dark:text-rose-400",
+                )}
+              >
+                {formatCurrency(t.displayAmount, displayCurrency, displayCurrency)}
+              </span>
+            </div>
+          ))
+        )}
+      </div>
+    </div>
+  ) : null
 
   return (
     <Card>
@@ -117,9 +202,15 @@ export function CategoryBreakdownChart({ data, displayCurrency }: CategoryBreakd
                       outerRadius={85}
                       fill="#8884d8"
                       dataKey="value"
+                      cursor="pointer"
+                      onClick={(d: any) => d?.name && toggleCategory(d.name)}
                     >
                       {pieChartData.map((entry, index) => (
-                        <Cell key={`cell-${index}`} fill={entry.color} />
+                        <Cell
+                          key={`cell-${index}`}
+                          fill={entry.color}
+                          opacity={pinnedCategory && pinnedCategory !== entry.name ? 0.35 : 1}
+                        />
                       ))}
                     </Pie>
                     <Tooltip
@@ -177,9 +268,18 @@ export function CategoryBreakdownChart({ data, displayCurrency }: CategoryBreakd
                         return null
                       }}
                     />
-                    <Bar dataKey="display_amount" radius={[0, 4, 4, 0]}>
+                    <Bar
+                      dataKey="display_amount"
+                      radius={[0, 4, 4, 0]}
+                      cursor="pointer"
+                      onClick={(d: any) => d?.category && toggleCategory(d.category)}
+                    >
                       {expenseData.map((entry, index) => (
-                        <Cell key={`cell-${index}`} fill={entry.category_color} />
+                        <Cell
+                          key={`cell-${index}`}
+                          fill={entry.category_color}
+                          opacity={pinnedCategory && pinnedCategory !== entry.category ? 0.35 : 1}
+                        />
                       ))}
                     </Bar>
                   </BarChart>
@@ -187,9 +287,20 @@ export function CategoryBreakdownChart({ data, displayCurrency }: CategoryBreakd
               </div>
             </div>
 
+            {pinnedRow && pinnedRow.type !== "income" ? detailCard : null}
+
             <div className="grid gap-2">
               {expenseData.map((item) => (
-                <div key={item.category} className="flex items-center justify-between rounded-lg border p-2.5">
+                <button
+                  type="button"
+                  key={item.category}
+                  onClick={() => toggleCategory(item.category)}
+                  aria-pressed={pinnedCategory === item.category}
+                  className={cn(
+                    "flex items-center justify-between rounded-lg border p-2.5 text-left w-full hover:bg-accent transition-colors",
+                    pinnedCategory === item.category && "ring-2 ring-primary border-primary",
+                  )}
+                >
                   <div className="flex items-center gap-2 text-sm font-medium">
                     <span className="inline-block h-3 w-3 rounded-full" style={{ backgroundColor: item.category_color }} />
                     <span>{item.category_icon}</span>
@@ -199,7 +310,7 @@ export function CategoryBreakdownChart({ data, displayCurrency }: CategoryBreakd
                     {formatCurrency(item.display_amount, displayCurrency, displayCurrency)}
                     {expenseTotal > 0 ? ` • ${((item.display_amount / expenseTotal) * 100).toFixed(0)}%` : ""}
                   </div>
-                </div>
+                </button>
               ))}
             </div>
           </TabsContent>
@@ -234,14 +345,26 @@ export function CategoryBreakdownChart({ data, displayCurrency }: CategoryBreakd
                       return null
                     }}
                   />
-                  <Bar dataKey="display_amount" fill="hsl(142, 76%, 36%)" radius={[4, 4, 0, 0]}>
+                  <Bar
+                    dataKey="display_amount"
+                    fill="hsl(142, 76%, 36%)"
+                    radius={[4, 4, 0, 0]}
+                    cursor="pointer"
+                    onClick={(d: any) => d?.category && toggleCategory(d.category)}
+                  >
                     {incomeData.map((entry, index) => (
-                      <Cell key={`cell-${index}`} fill={entry.category_color} />
+                      <Cell
+                        key={`cell-${index}`}
+                        fill={entry.category_color}
+                        opacity={pinnedCategory && pinnedCategory !== entry.category ? 0.35 : 1}
+                      />
                     ))}
                   </Bar>
                 </BarChart>
               </ResponsiveContainer>
             </div>
+
+            {pinnedRow?.type === "income" ? detailCard : null}
           </TabsContent>
         </Tabs>
       </CardContent>
