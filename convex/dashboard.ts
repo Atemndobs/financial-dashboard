@@ -23,6 +23,15 @@ function includeInSpendingStats(transaction: any) {
   return !transaction.exclude_from_spending && !transaction.user_excluded
 }
 
+// Money deliberately set aside (transfers to your own savings/investment/fund
+// accounts). These are outflows on the statement but are NOT spending, so they
+// are excluded from the expense side of the savings-rate calculation.
+const SAVINGS_CATEGORIES = new Set(["Savings & Investments", "Savings", "Kids Fund", "Vacation Fund"])
+
+function isSavingsCategory(category: string) {
+  return SAVINGS_CATEGORIES.has(category)
+}
+
 function applyTransactionFilters(transactions: any[], filters: DashboardFilters) {
   return transactions.filter((transaction) => {
     if (!filters.includeTransfers && normalizeType(transaction) === "transfer") {
@@ -105,6 +114,7 @@ export const getYearlySummary = query({
         avg_monthly_expense: 0,
         _income_samples: 0,
         _expense_samples: 0,
+        _savings_outflow: 0,
         _accounts: new Set<string>(),
         _categories: new Set<string>(),
         _months: new Set<number>(),
@@ -116,6 +126,9 @@ export const getYearlySummary = query({
       } else {
         existing.total_expense += Math.abs(transaction.amount)
         existing._expense_samples += 1
+        if (isSavingsCategory(transaction.category)) {
+          existing._savings_outflow += Math.abs(transaction.amount)
+        }
       }
 
       existing.net_savings += transaction.amount
@@ -131,8 +144,13 @@ export const getYearlySummary = query({
         year: summary.year,
         total_income: summary.total_income,
         total_expense: summary.total_expense,
-        net_savings: summary.net_savings,
-        savings_rate: summary.total_income > 0 ? (summary.net_savings / summary.total_income) * 100 : 0,
+        // Savings/investment transfers are money set aside, not spending, so
+        // add them back: net savings = income - (expenses minus those transfers).
+        net_savings: summary.net_savings + summary._savings_outflow,
+        savings_rate:
+          summary.total_income > 0
+            ? ((summary.net_savings + summary._savings_outflow) / summary.total_income) * 100
+            : 0,
         transaction_count: summary.transaction_count,
         account_count: summary._accounts.size,
         category_count: summary._categories.size,
@@ -187,6 +205,7 @@ export const getMonthlyStats = query({
         transaction_count: 0,
         expense_count: 0,
         income_count: 0,
+        _savings_outflow: 0,
       }
 
       if (transaction.amount >= 0) {
@@ -195,6 +214,9 @@ export const getMonthlyStats = query({
       } else {
         existing.total_expense += Math.abs(transaction.amount)
         existing.expense_count += 1
+        if (isSavingsCategory(transaction.category)) {
+          existing._savings_outflow += Math.abs(transaction.amount)
+        }
       }
 
       existing.net += transaction.amount
@@ -203,9 +225,11 @@ export const getMonthlyStats = query({
     }
 
     return Array.from(grouped.values())
-      .map((summary) => ({
+      .map(({ _savings_outflow, ...summary }) => ({
         ...summary,
-        savings_rate: summary.total_income > 0 ? (summary.net / summary.total_income) * 100 : 0,
+        // Savings rate treats savings/investment transfers as money saved, not spent.
+        savings_rate:
+          summary.total_income > 0 ? ((summary.net + _savings_outflow) / summary.total_income) * 100 : 0,
       }))
       .sort((a, b) => (a.year === b.year ? b.month - a.month : b.year - a.year))
   },
