@@ -16,6 +16,33 @@ interface DashboardClientProps {
   availableAccounts: string[]
 }
 
+// Combine the per-year summaries into a single "All years" summary.
+function combineYearlySummaries(rows: YearlySummary[]): YearlySummary | null {
+  if (!rows || rows.length === 0) return null
+  if (rows.length === 1) return rows[0]
+
+  const total_income = rows.reduce((s, r) => s + r.total_income, 0)
+  const total_expense = rows.reduce((s, r) => s + r.total_expense, 0)
+  const net_savings = rows.reduce((s, r) => s + r.net_savings, 0)
+  // Reconstruct month counts from each year's average so the combined average
+  // is a true per-month figure across all years.
+  const incomeMonths = rows.reduce((s, r) => s + (r.avg_monthly_income > 0 ? r.total_income / r.avg_monthly_income : 0), 0)
+  const expenseMonths = rows.reduce((s, r) => s + (r.avg_monthly_expense > 0 ? r.total_expense / r.avg_monthly_expense : 0), 0)
+
+  return {
+    year: 0, // sentinel: rendered as "All years"
+    total_income,
+    total_expense,
+    net_savings,
+    savings_rate: total_income > 0 ? (net_savings / total_income) * 100 : 0,
+    transaction_count: rows.reduce((s, r) => s + r.transaction_count, 0),
+    account_count: Math.max(...rows.map((r) => r.account_count)),
+    category_count: Math.max(...rows.map((r) => r.category_count)),
+    avg_monthly_income: incomeMonths > 0 ? total_income / incomeMonths : 0,
+    avg_monthly_expense: expenseMonths > 0 ? total_expense / expenseMonths : 0,
+  }
+}
+
 export function DashboardClient({ availableYears, availableAccounts }: DashboardClientProps) {
   const isMobile = useIsMobile()
   const [filters, setFilters] = useState<FilterState>({
@@ -62,7 +89,9 @@ export function DashboardClient({ availableYears, availableAccounts }: Dashboard
           transactionsRes.json(),
         ])
 
-        setYearlySummary(summaryData[0] || null)
+        setYearlySummary(
+          filters.year === null ? combineYearlySummaries(summaryData) : summaryData[0] || null,
+        )
         setMonthlyStats(monthlyData)
         setCategoryStats(categoryData)
         setTransactions(transactionsData)

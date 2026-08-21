@@ -20,7 +20,7 @@ export function YearlyKPIs({ summary, displayCurrency }: YearlyKPIsProps) {
     <div className="space-y-4">
       <div>
         <h2 className="text-2xl font-bold tracking-tight">Yearly Overview</h2>
-        <p className="text-muted-foreground">Key financial metrics for {summary.year}</p>
+        <p className="text-muted-foreground">Key financial metrics for {summary.year ? summary.year : "all years"}</p>
       </div>
 
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
