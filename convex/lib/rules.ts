@@ -110,12 +110,11 @@ export const RULES: CategorizationRule[] = [
   // IBAN), which is stable, and placed BEFORE the amount-split rules so the
   // recipient always wins regardless of amount.
   {
-    // The recurring EUR 1'000 standing order to Anchenmick Esther is the
-    // Family Fund contribution; anything else to that recipient is loan repayment.
-    // (Larger one-off transfers can't be auto-split; split them manually.)
-    name: "Family Fund - Anchenmick Esther (EUR 1000)",
+    // To Anchenmick Esther: the USD transfer is the Family Fund contribution;
+    // every EUR transfer is loan repayment.
+    name: "Family Fund - Anchenmick Esther (USD)",
     keywords: [],
-    allKeywords: ["pascalkehre", "eur 1'000.00"],
+    allKeywords: ["pascalkehre", "usd"],
     category: "Family Fund",
   },
   {
