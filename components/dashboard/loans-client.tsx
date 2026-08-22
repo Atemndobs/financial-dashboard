@@ -317,6 +317,15 @@ export function LoansClient({
                   </g>
                 )
               })}
+              {Array.from({ length: Math.floor(xMax / 12) + 1 }).map((_, yi) => {
+                const i = yi * 12
+                if (i > xMax) return null
+                return (
+                  <text key={`x${yi}`} x={X(i)} y={H - 6} textAnchor="middle" className="fill-muted-foreground" fontSize={10}>
+                    {monthName(i + 1).split(" ")[1]}
+                  </text>
+                )
+              })}
               {isFinite(sim.aMonths) && (
                 <line x1={X(sim.aMonths)} y1={pt} x2={X(sim.aMonths)} y2={H - pb} stroke={ANCHEN} strokeWidth={1} strokeDasharray="3 3" opacity={0.5} />
               )}
