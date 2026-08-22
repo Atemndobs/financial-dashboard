@@ -472,6 +472,53 @@ export const getTaxDiagnostics = query({
   },
 })
 
+// Data-faithful cleanup for the Anchenmick Esther (pascalkehre) transfers:
+// every EUR transfer is loan repayment, the USD transfer stays Family Fund.
+// Also merges the earlier Family-Fund/Loan split rows (…-s2 children) back
+// into single transactions so the ledger matches the bank statement.
+export const consolidateEsther = mutation({
+  args: { userId: v.string() },
+  handler: async (ctx, args) => {
+    const rows = await ctx.db
+      .query("fin_transactions")
+      .withIndex("by_user_id", (q) => q.eq("user_id", args.userId))
+      .collect()
+    const byTid = new Map(rows.map((r) => [r.transaction_id, r]))
+    const now = new Date().toISOString()
+    let merged = 0
+    let relabeled = 0
+
+    for (const r of rows) {
+      const text = `${r.counterparty ?? ""} ${r.description ?? ""}`.toLowerCase()
+      if (!text.includes("pascalkehre")) continue
+      if (!/eur\s/.test(text)) continue // USD row stays Family Fund
+
+      if (r.transaction_id.endsWith("-s2")) {
+        const parent = byTid.get(r.transaction_id.slice(0, -3))
+        if (parent) {
+          const amount = parent.amount + r.amount
+          await ctx.db.patch(parent._id, {
+            amount,
+            abs_amount: Math.abs(amount),
+            is_expense: amount < 0,
+            category: "Loan repayment",
+            updated_at: now,
+          })
+          await ctx.db.delete(r._id)
+          merged += 1
+        } else {
+          await ctx.db.patch(r._id, { category: "Loan repayment", updated_at: now })
+          relabeled += 1
+        }
+      } else {
+        await ctx.db.patch(r._id, { category: "Loan repayment", updated_at: now })
+        relabeled += 1
+      }
+    }
+    return { merged, relabeled }
+  },
+})
+
 export const getAvailableAccounts = query({
   args: {
     userId: v.string(),
