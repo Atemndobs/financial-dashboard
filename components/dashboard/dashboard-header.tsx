@@ -2,7 +2,7 @@
 
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
-import { ChevronDown, ChevronUp, ReceiptText } from "lucide-react"
+import { ChevronDown, ChevronUp, ReceiptText, HandCoins } from "lucide-react"
 import { UserMenu } from "@/components/user-menu"
 import { ImportPdfDialog } from "@/components/dashboard/import-pdf-dialog"
 
@@ -60,6 +60,12 @@ export function DashboardHeader({
         </div>
 
         <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
+          <Button asChild variant="outline" size="sm" className="gap-2">
+            <Link href="/loans" aria-label="Loans">
+              <HandCoins className="h-4 w-4" />
+              <span className="hidden sm:inline">Loans</span>
+            </Link>
+          </Button>
           <Button asChild variant="outline" size="sm" className="gap-2">
             <Link href="/tax" aria-label="Tax">
               <ReceiptText className="h-4 w-4" />
