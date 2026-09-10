@@ -27,6 +27,10 @@ export async function DELETE(request: NextRequest) {
     await deleteForeignIncome(id)
     return NextResponse.json({ ok: true })
   } catch (error) {
+    const message = error instanceof Error ? error.message : ""
+    if (message.includes("Foreign income record not found")) {
+      return NextResponse.json({ error: "Not found" }, { status: 404 })
+    }
     console.error("[tax/foreign-income] DELETE failed", error)
     return NextResponse.json({ error: "Failed" }, { status: 500 })
   }

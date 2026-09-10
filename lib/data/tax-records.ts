@@ -154,5 +154,6 @@ export async function addForeignIncome(year: number, record: ForeignIncomeRecord
 }
 
 export async function deleteForeignIncome(id: string) {
-  return runConvexMutation("tax:deleteForeignIncome", { id } as any)
+  const userId = await requireUserId()
+  return runConvexMutation("tax:deleteForeignIncome", { userId, id } as any)
 }

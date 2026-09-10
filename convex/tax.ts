@@ -219,8 +219,12 @@ export const addForeignIncome = mutation({
 })
 
 export const deleteForeignIncome = mutation({
-  args: { id: v.id("fin_tax_foreign_income") },
-  handler: async (ctx, { id }) => {
+  args: { userId: v.string(), id: v.id("fin_tax_foreign_income") },
+  handler: async (ctx, { userId, id }) => {
+    const row = await ctx.db.get(id)
+    if (!row || row.user_id !== userId) {
+      throw new Error("Foreign income record not found")
+    }
     await ctx.db.delete(id)
   },
 })
