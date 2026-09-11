@@ -2,12 +2,14 @@
 
 import Link from "next/link"
 import { useCallback, useEffect, useMemo, useState } from "react"
-import { AlertCircle, ArrowLeft, Download, Info } from "lucide-react"
+import { AlertCircle, ArrowLeft, Check, Download, Info, Minus } from "lucide-react"
 import { UserMenu } from "@/components/user-menu"
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { Checkbox } from "@/components/ui/checkbox"
 import {
   Collapsible,
   CollapsibleContent,
@@ -18,6 +20,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
 import type { StagedTaxEstimate } from "@/lib/tax/estimate-types"
+import { TAX_PREP_CHECKLIST_GROUPS, TAX_PREP_TRANSLATION_NOTICE } from "@/lib/tax/prep-checklist"
 import { ProvenanceChip } from "./provenance-chip"
 import { TaxHouseholdForm } from "./tax-household-form"
 import { TaxSalaryStatementImport } from "./tax-salary-statement-import"
@@ -38,7 +41,29 @@ interface ChecklistItem {
   documents: string[]
 }
 
+interface PrepChecklistRow {
+  rowKey: string
+  groupTitle: string
+  label: string
+  note?: string
+  applicability: "required" | "if_applicable"
+  processed: boolean
+  processedReason: string
+  matchedDocs: string[]
+}
+
 const CURRENT_YEAR = new Date().getFullYear()
+const CHECKLIST_STORAGE_PREFIX = "tax-dashboard-checklist:v2"
+
+const PREP_ITEM_TO_DEDUCTION_KEY: Partial<Record<string, string>> = {
+  fremdbetreuung: "kinderbetreuung",
+  krankenkasse: "versicherungen",
+  krankheitskosten: "krankheitskosten",
+  spenden: "spenden",
+  schuldzinsen: "schuldzinsen",
+  saeule3a: "vorsorge_3a",
+  "miete-zug": "wohnkosten",
+}
 
 function formatMoney(amount: number, currency = "CHF") {
   return new Intl.NumberFormat("de-CH", {
@@ -60,6 +85,67 @@ async function parseApiError(response: Response) {
   return `Request failed (${response.status})`
 }
 
+function getChecklistStorageKey(year: string) {
+  return `${CHECKLIST_STORAGE_PREFIX}:${year}`
+}
+
+function buildPrepChecklistRows(estimate: StagedTaxEstimate, checklist: ChecklistItem[]): PrepChecklistRow[] {
+  const byDeductionKey = new Map(
+    estimate.deduction_breakdown.items.map((item) => [item.key, item]),
+  )
+  const byChecklistKey = new Map(checklist.map((item) => [item.deduction_key, item]))
+  const hasDetectedTransactions =
+    estimate.income_breakdown.provenance === "derived_from_transactions" ||
+    estimate.deduction_breakdown.items.some((item) => item.transaction_count > 0)
+
+  return TAX_PREP_CHECKLIST_GROUPS.flatMap((group) =>
+    group.items.map((item) => {
+      const rowKey = `${group.id}:${item.id}`
+      const deductionKey = PREP_ITEM_TO_DEDUCTION_KEY[item.id]
+      const matchedDynamic = deductionKey ? byChecklistKey.get(deductionKey) : undefined
+      const matchedDeduction = deductionKey ? byDeductionKey.get(deductionKey) : undefined
+
+      let processed = false
+      let processedReason = "Not detected from current tax inputs."
+
+      if (item.id === "steuerbogen-aktuell") {
+        processed = Boolean(estimate.profile.canton && estimate.profile.municipality)
+        processedReason = processed
+          ? "Tax profile started (canton + municipality captured)."
+          : "Tax profile location is still missing."
+      } else if (item.id === "lohnausweis-oder-ea") {
+        processed =
+          estimate.income_breakdown.gross_taxable_income > 0 &&
+          estimate.income_breakdown.provenance !== "derived_from_transactions"
+        processedReason = processed
+          ? `Income captured from ${estimate.income_breakdown.provenance === "imported_document" ? "imported salary statement" : "manual entry"}.`
+          : "No salary statement/manual income source captured yet."
+      } else if (item.id === "banken-depots") {
+        processed = hasDetectedTransactions
+        processedReason = processed
+          ? "Transactions are available and used in tax estimation."
+          : "No transaction-derived evidence detected yet."
+      } else if (matchedDeduction) {
+        processed = matchedDeduction.transaction_count > 0
+        processedReason = processed
+          ? `Detected ${matchedDeduction.transaction_count} related transaction(s).`
+          : "No matching transactions detected for this category."
+      }
+
+      return {
+        rowKey,
+        groupTitle: group.title,
+        label: item.label,
+        note: item.note,
+        applicability: item.applicability,
+        processed,
+        processedReason,
+        matchedDocs: matchedDynamic?.documents ?? [],
+      }
+    }),
+  )
+}
+
 export function TaxDashboardClient({ initialYears }: TaxDashboardClientProps) {
   const [availableYears, setAvailableYears] = useState<number[]>(
     initialYears.length > 0 ? initialYears : [CURRENT_YEAR],
@@ -75,6 +161,8 @@ export function TaxDashboardClient({ initialYears }: TaxDashboardClientProps) {
   const [isLoading, setIsLoading] = useState(true)
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
   const [refreshToken, setRefreshToken] = useState(0)
+  const [collectedByRow, setCollectedByRow] = useState<Record<string, boolean>>({})
+  const [isChecklistOpen, setIsChecklistOpen] = useState(false)
 
   useEffect(() => {
     let cancelled = false
@@ -133,8 +221,38 @@ export function TaxDashboardClient({ initialYears }: TaxDashboardClientProps) {
     }
   }, [selectedYear, refreshToken])
 
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem(getChecklistStorageKey(selectedYear))
+      setCollectedByRow(raw ? (JSON.parse(raw) as Record<string, boolean>) : {})
+    } catch {
+      setCollectedByRow({})
+    }
+  }, [selectedYear])
+
+  useEffect(() => {
+    try {
+      localStorage.setItem(getChecklistStorageKey(selectedYear), JSON.stringify(collectedByRow))
+    } catch {
+      // Ignore storage errors; checklist still works in-session.
+    }
+  }, [collectedByRow, selectedYear])
+
   const onSaved = useCallback(() => setRefreshToken((t) => t + 1), [])
   const year = Number.parseInt(selectedYear, 10)
+
+  const prepChecklistRows = useMemo(
+    () => (estimate ? buildPrepChecklistRows(estimate, checklist) : []),
+    [estimate, checklist],
+  )
+  const processedCount = useMemo(
+    () => prepChecklistRows.filter((row) => row.processed).length,
+    [prepChecklistRows],
+  )
+  const collectedCount = useMemo(
+    () => prepChecklistRows.filter((row) => collectedByRow[row.rowKey]).length,
+    [prepChecklistRows, collectedByRow],
+  )
 
   const balanceCard = useMemo(() => {
     if (!estimate) return null
@@ -404,26 +522,93 @@ export function TaxDashboardClient({ initialYears }: TaxDashboardClientProps) {
           <Card>
             <CardHeader>
               <CardTitle>Document Checklist</CardTitle>
-              <CardDescription>Collect these documents before filing.</CardDescription>
+              <CardDescription>
+                Fold open to review, check off collected docs, and see what the app has already processed.
+              </CardDescription>
             </CardHeader>
-            <CardContent className="space-y-4">
-              {checklist.length === 0 ? (
-                <p className="text-sm text-muted-foreground">No checklist items for this year.</p>
-              ) : (
-                checklist.map((item) => (
-                  <div key={item.deduction_key} className="rounded-md border p-3">
-                    <p className="font-medium">
-                      {item.label_en} {item.total_amount > 0 && `(${formatMoney(item.total_amount)})`}
-                    </p>
-                    <p className="text-xs text-muted-foreground mb-2">{item.label_de}</p>
-                    <ul className="list-disc pl-5 text-sm text-muted-foreground space-y-1">
-                      {item.documents.map((doc) => (
-                        <li key={doc}>{doc}</li>
-                      ))}
-                    </ul>
+            <CardContent>
+              <Collapsible open={isChecklistOpen} onOpenChange={setIsChecklistOpen}>
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
+                    <span>Collected {collectedCount}/{prepChecklistRows.length}</span>
+                    <span>Processed {processedCount}/{prepChecklistRows.length}</span>
                   </div>
-                ))
-              )}
+                  <CollapsibleTrigger asChild>
+                    <Button variant="outline" size="sm">
+                      {isChecklistOpen ? "Hide checklist" : "Open checklist"}
+                    </Button>
+                  </CollapsibleTrigger>
+                </div>
+
+                <CollapsibleContent className="pt-4 space-y-3">
+                  <p className="text-xs text-muted-foreground">{TAX_PREP_TRANSLATION_NOTICE}</p>
+                  <div className="rounded-md border">
+                    <div className="grid grid-cols-[minmax(0,1fr)_90px_110px] gap-2 border-b bg-muted/40 px-3 py-2 text-xs font-medium text-muted-foreground">
+                      <span>Document</span>
+                      <span className="text-center">Collected</span>
+                      <span className="text-center">Processed</span>
+                    </div>
+                    <Accordion type="multiple" className="px-3">
+                      {prepChecklistRows.map((row) => (
+                        <AccordionItem key={row.rowKey} value={row.rowKey}>
+                          <AccordionTrigger className="py-3 hover:no-underline">
+                            <div className="grid w-full grid-cols-[minmax(0,1fr)_90px_110px] items-center gap-2 pr-2 text-left">
+                              <div className="min-w-0">
+                                <p className="truncate text-sm font-medium">{row.label}</p>
+                                <p className="truncate text-xs text-muted-foreground">{row.groupTitle}</p>
+                              </div>
+                              <div className="flex justify-center">
+                                <Checkbox
+                                  checked={Boolean(collectedByRow[row.rowKey])}
+                                  onClick={(event) => event.stopPropagation()}
+                                  onCheckedChange={(checked) => {
+                                    setCollectedByRow((prev) => ({ ...prev, [row.rowKey]: Boolean(checked) }))
+                                  }}
+                                  aria-label={`Mark ${row.label} as collected`}
+                                />
+                              </div>
+                              <div className="flex justify-center">
+                                {row.processed ? (
+                                  <Badge className="gap-1">
+                                    <Check className="h-3 w-3" />
+                                    Done
+                                  </Badge>
+                                ) : (
+                                  <Badge variant="secondary" className="gap-1">
+                                    <Minus className="h-3 w-3" />
+                                    Pending
+                                  </Badge>
+                                )}
+                              </div>
+                            </div>
+                          </AccordionTrigger>
+                          <AccordionContent>
+                            <div className="rounded-md border bg-muted/30 p-3 text-sm space-y-2">
+                              <p className="text-xs text-muted-foreground">{row.processedReason}</p>
+                              {row.note && <p>{row.note}</p>}
+                              <p className="text-xs text-muted-foreground">
+                                {row.applicability === "required" ? "Required" : "Only if applicable"}
+                              </p>
+                              {row.matchedDocs.length > 0 && (
+                                <div>
+                                  <p className="text-xs font-medium text-muted-foreground mb-1">
+                                    Detected supporting documents
+                                  </p>
+                                  <ul className="list-disc pl-5 text-xs text-muted-foreground space-y-1">
+                                    {row.matchedDocs.map((doc, index) => (
+                                      <li key={`${row.rowKey}-${index}`}>{doc}</li>
+                                    ))}
+                                  </ul>
+                                </div>
+                              )}
+                            </div>
+                          </AccordionContent>
+                        </AccordionItem>
+                      ))}
+                    </Accordion>
+                  </div>
+                </CollapsibleContent>
+              </Collapsible>
             </CardContent>
           </Card>
 

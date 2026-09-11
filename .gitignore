@@ -44,3 +44,9 @@ next-env.d.ts
 
 # clerk configuration (can include secrets)
 /.clerk/
+
+# pulled production env snapshot (contains secrets)
+.env*.pull
+
+# generated knowledge graph, rebuilt by the graphify hook
+graphify-out/
